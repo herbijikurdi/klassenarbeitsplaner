@@ -241,6 +241,31 @@ class KlassenarbeitsPlaner {
             this.openModal(dateToAdd);
         });
 
+        // Exam-Detail Popup Events
+        document.getElementById('examDetailPopupClose').addEventListener('click', () => {
+            this.closeExamDetailPopup();
+        });
+
+        document.getElementById('examDetailPopup').addEventListener('click', (e) => {
+            if (e.target.id === 'examDetailPopup') {
+                this.closeExamDetailPopup();
+            }
+        });
+
+        document.getElementById('editExamFromDetail').addEventListener('click', () => {
+            if (this.currentDetailExam) {
+                this.closeExamDetailPopup();
+                this.editExam(this.currentDetailExam.id);
+            }
+        });
+
+        document.getElementById('deleteExamFromDetail').addEventListener('click', () => {
+            if (this.currentDetailExam) {
+                this.closeExamDetailPopup();
+                this.deleteExam(this.currentDetailExam.id);
+            }
+        });
+
         // Form Submit
         document.getElementById('examForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -259,6 +284,7 @@ class KlassenarbeitsPlaner {
             if (e.key === 'Escape') {
                 this.closeModal();
                 this.closeDayPopup();
+                this.closeExamDetailPopup();
             }
         });
     }
@@ -550,6 +576,27 @@ class KlassenarbeitsPlaner {
                 this.deleteExam(examId);
             });
         });
+
+        // Event-Handler für Exam-Item Click (Desktop-Popup)
+        examList.querySelectorAll('.exam-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                // Verhindere Popup wenn auf Buttons geklickt wird
+                if (e.target.closest('.btn-edit') || e.target.closest('.btn-delete')) {
+                    return;
+                }
+                
+                const examId = item.dataset.examId;
+                const exam = this.exams.find(e => e.id === examId);
+                
+                if (exam) {
+                    // Prüfe ob Desktop (nicht Mobile)
+                    const isDesktop = window.innerWidth > 768;
+                    if (isDesktop) {
+                        this.showExamDetailPopup(exam);
+                    }
+                }
+            });
+        });
     }
 
     createExamItemHTML(exam, isArchived = false) {
@@ -604,7 +651,7 @@ class KlassenarbeitsPlaner {
                            (isOwner ? 'style="border-left: 4px solid #28a745;"' : 'style="border-left: 4px solid #e9ecef;"'));
 
         return `
-            <div class="${itemClass}" ${borderStyle}>
+            <div class="${itemClass}" data-exam-id="${exam.id}" ${borderStyle.replace('style="', 'style="cursor: pointer; ')}>
                 <div class="exam-item-header">
                     <div class="exam-subject">${exam.subject}${firebaseIcon}${testBadge}${ownerBadge}${archiveBadge}${adminBadge}</div>
                     <div class="exam-date">${formattedDate}${timeDisplay}</div>
@@ -1455,6 +1502,57 @@ class KlassenarbeitsPlaner {
         if (this.unsubscribeExams) {
             this.unsubscribeExams();
         }
+    }
+
+    showExamDetailPopup(exam) {
+        const popup = document.getElementById('exam-detail-popup');
+        const examTitle = popup.querySelector('.exam-detail-title');
+        const examSubject = popup.querySelector('.exam-detail-subject');
+        const examDate = popup.querySelector('.exam-detail-date');
+        const examTime = popup.querySelector('.exam-detail-time');
+        const examDescription = popup.querySelector('.exam-detail-description');
+        const editBtn = popup.querySelector('.btn-edit-exam');
+        const deleteBtn = popup.querySelector('.btn-delete-exam');
+
+        // Exam-Daten ins Popup laden
+        examTitle.textContent = exam.title || exam.subject;
+        examSubject.textContent = exam.subject;
+        
+        const examDateTime = new Date(exam.date);
+        examDate.textContent = examDateTime.toLocaleDateString('de-DE', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        examTime.textContent = exam.time || '⏰ Keine Zeit angegeben';
+        examDescription.textContent = exam.description || 'Keine Beschreibung verfügbar';
+
+        // Button Event-Handler setzen
+        editBtn.onclick = () => {
+            this.closeExamDetailPopup();
+            this.editExam(exam.id);
+        };
+        
+        deleteBtn.onclick = () => {
+            this.closeExamDetailPopup();
+            this.deleteExam(exam.id);
+        };
+
+        // Popup anzeigen
+        popup.style.display = 'flex';
+        popup.offsetHeight; // Force reflow
+        popup.classList.add('show');
+    }
+
+    closeExamDetailPopup() {
+        const popup = document.getElementById('exam-detail-popup');
+        
+        popup.classList.remove('show');
+        setTimeout(() => {
+            popup.style.display = 'none';
+        }, 300);
     }
 }
 

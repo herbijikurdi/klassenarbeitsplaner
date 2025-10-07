@@ -645,23 +645,22 @@ body {
 
 .add-event-for-day {
     width: 100%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #5a5a5a;
     color: white;
     border: none;
-    padding: 18px 28px;
-    border-radius: 16px;
-    font-size: 1.1rem;
-    font-weight: 700;
+    padding: 16px 20px;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: 10px;
     position: relative;
     overflow: hidden;
-    border: 2px solid transparent;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .add-event-for-day::before {
@@ -671,14 +670,14 @@ body {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    transition: left 0.5s ease;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: left 0.3s ease;
 }
 
 .add-event-for-day:hover {
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 12px 30px rgba(102, 126, 234, 0.3);
-    border-color: rgba(255,255,255,0.3);
+    background: #4a4a4a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .add-event-for-day:hover::before {
@@ -686,20 +685,22 @@ body {
 }
 
 .add-event-for-day:active {
-    transform: translateY(-1px) scale(1.01);
+    transform: translateY(0px);
+    background: #3a3a3a;
 }
 
 .no-events-message {
     text-align: center;
-    color: #6c757d;
+    color: #8e8e93;
     font-style: italic;
-    margin-bottom: 24px;
-    padding: 32px 24px;
+    margin-bottom: 20px;
+    padding: 40px 30px;
     background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
     border-radius: 16px;
-    border: 2px dashed #d4edda;
+    border: 2px dashed #c7c7cc;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .no-events-message::before {
@@ -715,10 +716,172 @@ body {
 
 .no-events-message i {
     display: block;
-    font-size: 2.5rem;
+    font-size: 3.5rem;
     margin-bottom: 12px;
-    color: #667eea;
-    opacity: 0.6;
+    color: #c7c7cc;
+    opacity: 0.8;
+}
+
+/* Exam-Detail Popup für Desktop */
+.exam-detail-popup {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    z-index: 1002;
+    animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.exam-detail-popup-content {
+    background: white;
+    width: 90%;
+    max-width: 600px;
+    margin: 4% auto;
+    border-radius: 20px;
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.15),
+        0 8px 25px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    animation: slideInScale 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.exam-detail-popup-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 28px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.exam-detail-popup-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.exam-detail-popup-header h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    letter-spacing: -0.5px;
+}
+
+.exam-detail-popup-close {
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    z-index: 1;
+}
+
+.exam-detail-popup-close:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: rotate(90deg) scale(1.1);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.exam-detail-popup-body {
+    padding: 32px;
+    background: linear-gradient(to bottom, #fff 0%, #fafbff 100%);
+}
+
+.exam-detail-content {
+    margin-bottom: 24px;
+}
+
+.exam-detail-item {
+    margin-bottom: 20px;
+    padding: 0;
+}
+
+.exam-detail-label {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.exam-detail-value {
+    font-size: 1.1rem;
+    color: #555;
+    line-height: 1.4;
+    padding: 12px 16px;
+    background: #f8f9ff;
+    border-radius: 12px;
+    border-left: 4px solid #667eea;
+}
+
+.exam-detail-actions {
+    display: flex;
+    gap: 16px;
+    padding-top: 24px;
+    border-top: 1px solid #e8f2ff;
+}
+
+.btn-edit-detail, .btn-delete-detail {
+    flex: 1;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-edit-detail {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);
+}
+
+.btn-edit-detail:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+}
+
+.btn-delete-detail {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.2);
+}
+
+.btn-delete-detail:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
 }
 
 /* Form */
@@ -1517,103 +1680,11 @@ body {
         user-select: none;
     }
 
-    /* Kalendertag Popup für Mobile */
-    .day-popup-content {
-        width: 95%;
-        max-width: 380px;
-        margin: 5% auto;
-        border-radius: 20px;
-        max-height: 85vh;
-    }
+    /* Day-Popup behält Desktop-Design auch auf Mobile */
+    /* Entfernt: Mobile-spezifische Overrides für konsistentes Design */
 
-    .day-popup-header {
-        padding: 25px 20px;
-    }
-
-    .day-popup-header h3 {
-        font-size: 1.4rem;
-    }
-
-    .day-popup-close {
-        width: 36px;
-        height: 36px;
-        font-size: 1.1rem;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        backdrop-filter: none;
-    }
-
-    /* Schlichtere Hover-Effekte für Mobile */
-    .day-popup-close:hover {
-        background: rgba(255, 255, 255, 0.2);
-        transform: none;
-        box-shadow: none;
-    }
-
-    .day-popup-body {
-        padding: 25px;
-    }
-
-    .day-event-item {
-        padding: 16px;
-        margin-bottom: 12px;
-        border-radius: 10px;
-        border: 1px solid #e8f2ff;
-        background: white;
-    }
-
-    /* Schlichtere Touch-Effekte für Mobile */
-    .day-event-item:hover {
-        transform: none;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
-        border-color: #cce7ff;
-    }
-
-    .day-event-item::before {
-        display: none; /* Kein Gradient-Overlay auf Mobile */
-    }
-
-    .day-event-subject {
-        font-size: 1.2rem;
-        margin-bottom: 10px;
-    }
-
-    .day-event-topic {
-        font-size: 1rem;
-        margin-bottom: 10px;
-    }
-
-    .day-event-details {
-        font-size: 0.9rem;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .add-event-for-day {
-        padding: 12px 18px;
-        font-size: 1rem;
-        font-weight: 500;
-        border-radius: 10px;
-        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-        box-shadow: 0 2px 8px rgba(108, 117, 125, 0.15);
-        border: 1px solid rgba(255,255,255,0.1);
-    }
-
-    /* Entferne komplexe Hover-Effekte auf Mobile */
-    .add-event-for-day:hover {
-        transform: none;
-        box-shadow: 0 3px 12px rgba(108, 117, 125, 0.2);
-    }
-
-    .add-event-for-day::before {
-        display: none; /* Kein Shimmer-Effekt auf Mobile */
-    }
-
-    .no-events-message {
-        padding: 25px;
-        font-size: 1rem;
-        border-radius: 12px;
-    }
+    /* No-events-message behält Desktop-Design auch auf Mobile */
+    /* Entfernt: Mobile-Override für konsistentes Design */
 
     /* Smooth scrolling */
     html {
