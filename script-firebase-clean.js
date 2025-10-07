@@ -239,37 +239,6 @@ class KlassenarbeitsPlaner {
                 this.closeDayPopup();
             }
         });
-
-        // Day-Popup Events mit Event-Delegation
-        document.getElementById('dayPopupClose').addEventListener('click', () => {
-            this.closeDayPopup();
-        });
-
-        // Event-Delegation für dynamischen addEventForDay Button
-        document.getElementById('dayPopup').addEventListener('click', (e) => {
-            if (e.target.id === 'dayPopup') {
-                // Klick außerhalb des Popups
-                this.closeDayPopup();
-            } else if (e.target.id === 'addEventForDay' || e.target.closest('#addEventForDay')) {
-                // Klick auf "Ereignis hinzufügen" Button
-                e.preventDefault();
-                e.stopPropagation();
-                this.closeDayPopup();
-                setTimeout(() => {
-                    this.openModal(this.selectedDate);
-                }, 50);
-            } else if (e.target.closest('.day-event-item')) {
-                // Klick auf ein Event-Item - scrolle zum entsprechenden Eintrag
-                e.preventDefault();
-                e.stopPropagation();
-                const eventItem = e.target.closest('.day-event-item');
-                const examId = eventItem.dataset.examId;
-                if (examId) {
-                    this.scrollToExamInList(examId);
-                    this.closeDayPopup();
-                }
-            }
-        });
     }
 
     bindAdminEvents() {
@@ -712,33 +681,73 @@ class KlassenarbeitsPlaner {
             if (targetExamItem) {
                 console.log('Target Exam-Item gefunden, führe Scroll aus');
                 
-                // Highlight-Effekt hinzufügen
-                const originalTransition = targetExamItem.style.transition;
-                const originalTransform = targetExamItem.style.transform;
-                const originalBoxShadow = targetExamItem.style.boxShadow;
-                const originalBorderColor = targetExamItem.style.borderColor;
+                // Mobile-optimiertes Scrolling
+                const isMobile = window.innerWidth <= 768;
                 
-                targetExamItem.style.transition = 'all 0.5s ease';
-                targetExamItem.style.transform = 'scale(1.02)';
-                targetExamItem.style.boxShadow = '0 12px 40px rgba(67, 97, 238, 0.4)';
-                targetExamItem.style.borderColor = '#4361ee';
-                targetExamItem.style.borderWidth = '3px';
-                
-                // Scrolle sanft zum Element
-                targetExamItem.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center',
-                    inline: 'nearest'
-                });
-                
-                // Entferne Highlight nach 3 Sekunden
-                setTimeout(() => {
-                    targetExamItem.style.transition = originalTransition;
-                    targetExamItem.style.transform = originalTransform;
-                    targetExamItem.style.boxShadow = originalBoxShadow;
-                    targetExamItem.style.borderColor = originalBorderColor;
-                    targetExamItem.style.borderWidth = '';
-                }, 3000);
+                if (isMobile) {
+                    // Mobile: Direktes Scrolling ohne Hover-Effekte
+                    console.log('Mobile-Scrolling aktiviert');
+                    
+                    // Schneller, sichtbarer Highlight-Effekt für Mobile
+                    targetExamItem.style.transition = 'all 0.3s ease';
+                    targetExamItem.style.backgroundColor = '#e3f2fd';
+                    targetExamItem.style.borderLeft = '5px solid #4361ee';
+                    targetExamItem.style.transform = 'translateX(5px)';
+                    
+                    // Scrolle mit Offset für Mobile-Header
+                    const headerHeight = document.querySelector('.header')?.offsetHeight || 0;
+                    const offset = headerHeight + 20;
+                    
+                    const elementPosition = targetExamItem.offsetTop - offset;
+                    
+                    window.scrollTo({
+                        top: elementPosition,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Entferne Mobile-Highlight nach 2 Sekunden
+                    setTimeout(() => {
+                        targetExamItem.style.transition = 'all 0.3s ease';
+                        targetExamItem.style.backgroundColor = '';
+                        targetExamItem.style.borderLeft = '';
+                        targetExamItem.style.transform = '';
+                        
+                        setTimeout(() => {
+                            targetExamItem.style.transition = '';
+                        }, 300);
+                    }, 2000);
+                    
+                } else {
+                    // Desktop: Original Hover-Effekt
+                    console.log('Desktop-Scrolling aktiviert');
+                    
+                    const originalTransition = targetExamItem.style.transition;
+                    const originalTransform = targetExamItem.style.transform;
+                    const originalBoxShadow = targetExamItem.style.boxShadow;
+                    const originalBorderColor = targetExamItem.style.borderColor;
+                    
+                    targetExamItem.style.transition = 'all 0.5s ease';
+                    targetExamItem.style.transform = 'scale(1.02)';
+                    targetExamItem.style.boxShadow = '0 12px 40px rgba(67, 97, 238, 0.4)';
+                    targetExamItem.style.borderColor = '#4361ee';
+                    targetExamItem.style.borderWidth = '3px';
+                    
+                    // Scrolle sanft zum Element
+                    targetExamItem.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                        inline: 'nearest'
+                    });
+                    
+                    // Entferne Highlight nach 3 Sekunden
+                    setTimeout(() => {
+                        targetExamItem.style.transition = originalTransition;
+                        targetExamItem.style.transform = originalTransform;
+                        targetExamItem.style.boxShadow = originalBoxShadow;
+                        targetExamItem.style.borderColor = originalBorderColor;
+                        targetExamItem.style.borderWidth = '';
+                    }, 3000);
+                }
                 
                 console.log('Scroll und Highlight angewendet');
             } else {
