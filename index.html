@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Klassenarbeitsplaner</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-graduation-cap"></i> Klassenarbeitsplaner</h1>
+            <div class="header-actions">
+                <div class="connection-status" id="connectionStatus">
+                    <i class="fas fa-circle" id="statusIcon"></i>
+                    <span id="statusText">Verbinde...</span>
+                </div>
+                <button class="add-exam-btn" id="addExamBtn">
+                    <i class="fas fa-plus"></i> Klassenarbeit hinzufügen
+                </button>
+            </div>
+        </header>
+
+        <div class="calendar-controls">
+            <button class="nav-btn" id="prevMonth">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <h2 class="current-month" id="currentMonth">Oktober 2025</h2>
+            <button class="nav-btn" id="nextMonth">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <div class="calendar" id="calendar">
+            <div class="calendar-header">
+                <div class="day-header">Mo</div>
+                <div class="day-header">Di</div>
+                <div class="day-header">Mi</div>
+                <div class="day-header">Do</div>
+                <div class="day-header">Fr</div>
+                <div class="day-header">Sa</div>
+                <div class="day-header">So</div>
+            </div>
+            <div class="calendar-body" id="calendarBody">
+                <!-- Kalendertage werden hier dynamisch eingefügt -->
+            </div>
+        </div>
+
+        <div class="exam-list">
+            <h3><i class="fas fa-list"></i> Anstehende Klassenarbeiten</h3>
+            <div id="examList" class="exam-items">
+                <!-- Klassenarbeiten werden hier angezeigt -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal für neue Klassenarbeit -->
+    <div class="modal" id="examModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Neue Klassenarbeit</h3>
+                <button class="close-btn" id="closeModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="examForm">
+                <div class="form-group">
+                    <label for="subject">Fach:</label>
+                    <input type="text" id="subject" name="subject" required>
+                </div>
+                <div class="form-group">
+                    <label for="topic">Thema:</label>
+                    <input type="text" id="topic" name="topic" required>
+                </div>
+                <div class="form-group">
+                    <label for="date">Datum:</label>
+                    <input type="date" id="date" name="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="time">Uhrzeit:</label>
+                    <input type="time" id="time" name="time">
+                </div>
+                <div class="form-group">
+                    <label for="teacher">Lehrer/in:</label>
+                    <input type="text" id="teacher" name="teacher">
+                </div>
+                <div class="form-group">
+                    <label for="notes">Notizen:</label>
+                    <textarea id="notes" name="notes" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelBtn">Abbrechen</button>
+                    <button type="submit" class="btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    
+    <!-- Hybride Version mit Firebase + LocalStorage Fallback -->
+    <script src="script-hybrid.js"></script>
+</body>
+</html>
