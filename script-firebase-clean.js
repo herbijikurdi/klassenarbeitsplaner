@@ -451,7 +451,7 @@ class KlassenarbeitsPlaner {
         
         // Besitzer-Info und Berechtigungen
         const isOwner = exam.ownerId === this.userId;
-        const ownerDisplay = exam.ownerName ? `<span style="color: #666; font-size: 0.8rem;"><i class="fas fa-user-circle"></i> von ${exam.ownerName}</span>` : '';
+        const ownerDisplay = ''; // Benutzernamen nicht anzeigen
         const ownerBadge = isOwner ? '<span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px;">MEINE</span>' : '';
         
         // Admin-Badge
@@ -472,7 +472,7 @@ class KlassenarbeitsPlaner {
         ` : `
             <div class="exam-actions">
                 <span style="color: #999; font-style: italic; font-size: 0.9rem;">
-                    <i class="fas fa-lock"></i> Nur ${exam.ownerName || 'Besitzer'} kann bearbeiten
+                    <i class="fas fa-lock"></i> Nur Besitzer kann bearbeiten
                 </span>
             </div>
         `;
@@ -549,7 +549,7 @@ class KlassenarbeitsPlaner {
         };
 
         // Validierung
-        if (!examData.subject || !examData.topic || !examData.date) {
+        if (!examData.subject || !examData.date) {
             this.showNotification('Bitte füllen Sie alle Pflichtfelder aus.', 'error');
             return;
         }
@@ -587,8 +587,8 @@ class KlassenarbeitsPlaner {
             // Versuche zuerst globale Collection
             const examWithOwner = {
                 ...examData,
-                ownerId: this.userId,
-                ownerName: `Benutzer ${this.userId.substring(0, 8)}...`
+                ownerId: this.userId
+                // ownerName entfernt - Benutzernamen werden nicht mehr gespeichert
             };
             
             const examsRef = this.db.collection('exams');
