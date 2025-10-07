@@ -681,41 +681,157 @@ class KlassenarbeitsPlaner {
             if (targetExamItem) {
                 console.log('Target Exam-Item gefunden, führe Scroll aus');
                 
-                // Mobile-optimiertes Scrolling
-                const isMobile = window.innerWidth <= 768;
+                // Echte Mobile-Gerät Erkennung (nicht nur Viewport)
+                const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+                const isMobileViewport = window.innerWidth <= 768;
+                const isRealMobile = isTouchDevice && isMobileViewport;
                 
-                if (isMobile) {
-                    // Mobile: Direktes Scrolling ohne Hover-Effekte
-                    console.log('Mobile-Scrolling aktiviert');
+                console.log('Device Info:', {
+                    isTouchDevice,
+                    isMobileViewport,
+                    isRealMobile,
+                    userAgent: navigator.userAgent.includes('Mobile')
+                });
+                
+                if (isRealMobile || navigator.userAgent.includes('Mobile')) {
+                    // Echte Mobile-Geräte: Robustes Scrolling
+                    console.log('Echtes Mobile-Gerät erkannt - verwende robustes Scrolling');
                     
-                    // Schneller, sichtbarer Highlight-Effekt für Mobile
-                    targetExamItem.style.transition = 'all 0.3s ease';
-                    targetExamItem.style.backgroundColor = '#e3f2fd';
-                    targetExamItem.style.borderLeft = '5px solid #4361ee';
-                    targetExamItem.style.transform = 'translateX(5px)';
+                    // Highlight-Effekt für Mobile
+                    targetExamItem.style.transition = 'all 0.4s ease';
+                    targetExamItem.style.backgroundColor = '#bbdefb';
+                    targetExamItem.style.borderLeft = '6px solid #1976d2';
+                    targetExamItem.style.boxShadow = '0 4px 12px rgba(25, 118, 210, 0.3)';
                     
-                    // Scrolle mit Offset für Mobile-Header
-                    const headerHeight = document.querySelector('.header')?.offsetHeight || 0;
-                    const offset = headerHeight + 20;
+                    // Mehrere Scroll-Methoden für Maximum-Kompatibilität (Netlify-optimiert)
+                    const rect = targetExamItem.getBoundingClientRect();
+                    const absoluteElementTop = rect.top + (window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0);
+                    const headerHeight = document.querySelector('.header')?.offsetHeight || 80;
+                    const offset = headerHeight + 30;
+                    const targetPosition = Math.max(0, absoluteElementTop - offset);
                     
-                    const elementPosition = targetExamItem.offsetTop - offset;
-                    
-                    window.scrollTo({
-                        top: elementPosition,
-                        behavior: 'smooth'
+                    console.log('Scroll Info (Netlify-kompatibel):', {
+                        elementTop: absoluteElementTop,
+                        headerHeight,
+                        targetPosition,
+                        windowHeight: window.innerHeight,
+                        pageYOffset: window.pageYOffset,
+                        documentScrollTop: document.documentElement.scrollTop,
+                        bodyScrollTop: document.body.scrollTop
                     });
                     
-                    // Entferne Mobile-Highlight nach 2 Sekunden
+                    // Netlify/Mobile-optimierte Scroll-Methoden
+                    let scrollSuccess = false;
+                    
+                    // Methode 1: Moderne smooth scroll (wenn unterstützt)
+                    if (!scrollSuccess && window.scrollTo && 'scrollBehavior' in document.documentElement.style) {
+                        try {
+                            window.scrollTo({
+                                top: targetPosition,
+                                left: 0,
+                                behavior: 'smooth'
+                            });
+                            scrollSuccess = true;
+                            console.log('Moderne scrollTo mit smooth behavior erfolgreich');
+                        } catch (e) {
+                            console.log('Moderne scrollTo fehlgeschlagen:', e);
+                        }
+                    }
+                    
+                    // Methode 2: Standard scrollTo ohne smooth behavior
+                    if (!scrollSuccess && window.scrollTo) {
+                        try {
+                            window.scrollTo(0, targetPosition);
+                            scrollSuccess = true;
+                            console.log('Standard scrollTo erfolgreich');
+                        } catch (e) {
+                            console.log('Standard scrollTo fehlgeschlagen:', e);
+                        }
+                    }
+                    
+                    // Methode 3: Element scrollIntoView (sehr zuverlässig)
+                    if (!scrollSuccess) {
+                        try {
+                            targetExamItem.scrollIntoView({ 
+                                block: 'center',
+                                inline: 'nearest',
+                                behavior: 'smooth'
+                            });
+                            scrollSuccess = true;
+                            console.log('scrollIntoView smooth erfolgreich');
+                        } catch (e) {
+                            try {
+                                targetExamItem.scrollIntoView(true);
+                                scrollSuccess = true;
+                                console.log('scrollIntoView basic erfolgreich');
+                            } catch (e2) {
+                                console.log('scrollIntoView fehlgeschlagen:', e2);
+                            }
+                        }
+                    }
+                    
+                    // Methode 4: Manuelle DOM-Scroll-Manipulation
+                    if (!scrollSuccess) {
+                        try {
+                            if (document.documentElement && document.documentElement.scrollTop !== undefined) {
+                                document.documentElement.scrollTop = targetPosition;
+                                scrollSuccess = true;
+                                console.log('documentElement.scrollTop erfolgreich');
+                            } else if (document.body && document.body.scrollTop !== undefined) {
+                                document.body.scrollTop = targetPosition;
+                                scrollSuccess = true;
+                                console.log('body.scrollTop erfolgreich');
+                            }
+                        } catch (e) {
+                            console.log('Manuelle Scroll-Manipulation fehlgeschlagen:', e);
+                        }
+                    }
+                    
+                    // Methode 5: Fallback mit setTimeout für verzögerte Ausführung
+                    if (!scrollSuccess) {
+                        console.log('Alle direkten Scroll-Methoden fehlgeschlagen, versuche verzögerte Ausführung');
+                        setTimeout(() => {
+                            try {
+                                const currentRect = targetExamItem.getBoundingClientRect();
+                                const currentTop = currentRect.top + (window.pageYOffset || document.documentElement.scrollTop || 0);
+                                const newTargetPosition = Math.max(0, currentTop - offset);
+                                
+                                // Versuche wieder mit aktualisierter Position
+                                if (window.scrollTo) {
+                                    window.scrollTo(0, newTargetPosition);
+                                } else {
+                                    document.documentElement.scrollTop = newTargetPosition;
+                                }
+                                console.log('Verzögerter Scroll ausgeführt');
+                            } catch (e) {
+                                console.log('Auch verzögerter Scroll fehlgeschlagen:', e);
+                            }
+                        }, 200);
+                    }
+                    
+                    // Extra: Stelle sicher dass Element sichtbar ist
                     setTimeout(() => {
-                        targetExamItem.style.transition = 'all 0.3s ease';
+                        const newRect = targetExamItem.getBoundingClientRect();
+                        if (newRect.top < 0 || newRect.bottom > window.innerHeight) {
+                            console.log('Element nicht vollständig sichtbar, korrigiere Position');
+                            targetExamItem.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'center'
+                            });
+                        }
+                    }, 500);
+                    
+                    // Entferne Mobile-Highlight nach 3 Sekunden
+                    setTimeout(() => {
+                        targetExamItem.style.transition = 'all 0.4s ease';
                         targetExamItem.style.backgroundColor = '';
                         targetExamItem.style.borderLeft = '';
-                        targetExamItem.style.transform = '';
+                        targetExamItem.style.boxShadow = '';
                         
                         setTimeout(() => {
                             targetExamItem.style.transition = '';
-                        }, 300);
-                    }, 2000);
+                        }, 400);
+                    }, 3000);
                     
                 } else {
                     // Desktop: Original Hover-Effekt
