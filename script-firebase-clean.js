@@ -21,7 +21,7 @@ class KlassenarbeitsPlaner {
         this.auth = null;
         this.unsubscribeExams = null;
         this.isAdmin = false;
-        this.adminPassword = 'klassenplaner2025'; // Admin-Passwort
+        this.adminPassword = 'borabora'; // Admin-Passwort
         
         console.log('🚀 Firebase Klassenarbeitsplaner gestartet');
         this.init();
@@ -454,8 +454,12 @@ class KlassenarbeitsPlaner {
         const ownerDisplay = exam.ownerName ? `<span style="color: #666; font-size: 0.8rem;"><i class="fas fa-user-circle"></i> von ${exam.ownerName}</span>` : '';
         const ownerBadge = isOwner ? '<span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px;">MEINE</span>' : '';
         
-        // Aktions-Buttons nur für eigene Einträge
-        const actionsHTML = isOwner ? `
+        // Admin-Badge
+        const adminBadge = this.isAdmin ? '<span style="background: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px;">ADMIN</span>' : '';
+        
+        // Aktions-Buttons: für eigene Einträge oder als Admin
+        const canEdit = isOwner || this.isAdmin;
+        const actionsHTML = canEdit ? `
             <div class="exam-actions">
                 <button class="btn-edit" data-exam-id="${exam.id}">
                     <i class="fas fa-edit"></i> Bearbeiten
@@ -463,6 +467,7 @@ class KlassenarbeitsPlaner {
                 <button class="btn-delete" data-exam-id="${exam.id}">
                     <i class="fas fa-trash"></i> Löschen
                 </button>
+                ${this.isAdmin && !isOwner ? '<span style="color: #dc3545; font-size: 0.8rem; margin-left: 10px;"><i class="fas fa-shield-alt"></i> Admin-Zugriff</span>' : ''}
             </div>
         ` : `
             <div class="exam-actions">
@@ -475,7 +480,7 @@ class KlassenarbeitsPlaner {
         return `
             <div class="exam-item" ${exam.isTest ? 'style="border-left: 4px solid #ffc107;"' : (isOwner ? 'style="border-left: 4px solid #28a745;"' : 'style="border-left: 4px solid #e9ecef;"')}>
                 <div class="exam-item-header">
-                    <div class="exam-subject">${exam.subject}${firebaseIcon}${testBadge}${ownerBadge}</div>
+                    <div class="exam-subject">${exam.subject}${firebaseIcon}${testBadge}${ownerBadge}${adminBadge}</div>
                     <div class="exam-date">${formattedDate}${timeDisplay}</div>
                 </div>
                 <div class="exam-topic">${exam.topic}</div>
@@ -605,22 +610,27 @@ class KlassenarbeitsPlaner {
     async updateExamInFirebase(examId, examData) {
         if (!this.userId || !this.db) throw new Error('Firebase nicht verfügbar');
         
-        // Prüfe ob Benutzer der Besitzer ist
+        // Admin kann alles bearbeiten, normale Benutzer nur ihre eigenen
+        if (!this.isAdmin) {
+            // Prüfe ob Benutzer der Besitzer ist
+            const examRef = this.db.collection('exams').doc(examId);
+            const examDoc = await examRef.get();
+            
+            if (!examDoc.exists) {
+                throw new Error('Klassenarbeit nicht gefunden');
+            }
+            
+            const examOwner = examDoc.data().ownerId;
+            if (examOwner !== this.userId) {
+                throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten bearbeiten');
+            }
+        }
+        
         const examRef = this.db.collection('exams').doc(examId);
-        const examDoc = await examRef.get();
-        
-        if (!examDoc.exists) {
-            throw new Error('Klassenarbeit nicht gefunden');
-        }
-        
-        const examOwner = examDoc.data().ownerId;
-        if (examOwner !== this.userId) {
-            throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten bearbeiten');
-        }
-        
         await examRef.update({
             ...examData,
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
+            lastEditedBy: this.isAdmin ? 'Admin' : 'Besitzer'
         });
         console.log('Klassenarbeit in Firebase aktualisiert:', examId);
     }
@@ -653,19 +663,23 @@ class KlassenarbeitsPlaner {
     async deleteExamFromFirebase(examId) {
         if (!this.userId || !this.db) throw new Error('Firebase nicht verfügbar');
         
-        // Prüfe ob Benutzer der Besitzer ist
+        // Admin kann alles löschen, normale Benutzer nur ihre eigenen
+        if (!this.isAdmin) {
+            // Prüfe ob Benutzer der Besitzer ist
+            const examRef = this.db.collection('exams').doc(examId);
+            const examDoc = await examRef.get();
+            
+            if (!examDoc.exists) {
+                throw new Error('Klassenarbeit nicht gefunden');
+            }
+            
+            const examOwner = examDoc.data().ownerId;
+            if (examOwner !== this.userId) {
+                throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten löschen');
+            }
+        }
+        
         const examRef = this.db.collection('exams').doc(examId);
-        const examDoc = await examRef.get();
-        
-        if (!examDoc.exists) {
-            throw new Error('Klassenarbeit nicht gefunden');
-        }
-        
-        const examOwner = examDoc.data().ownerId;
-        if (examOwner !== this.userId) {
-            throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten löschen');
-        }
-        
         await examRef.delete();
         console.log('Klassenarbeit aus Firebase gelöscht:', examId);
     }
