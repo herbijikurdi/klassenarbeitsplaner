@@ -51,7 +51,6 @@ class KlassenarbeitsPlaner {
             this.renderExamList();
             
             this.updateConnectionStatus('online');
-            this.showNotification('Firebase-Verbindung aktiv!', 'success');
             
         } catch (error) {
             console.error('Firebase Initialisierung fehlgeschlagen:', error);
@@ -70,14 +69,17 @@ class KlassenarbeitsPlaner {
             firebase.initializeApp(firebaseConfig);
         }
 
-        // Firestore mit reduzierten Webchannel-Requests konfigurieren
+        // Firestore mit vollständig deaktiviertem Real-time für Stabilität
         this.db = firebase.firestore();
         
-        // Reduziere Webchannel-Aktivität für stabilere Verbindung
+        // DEAKTIVIERE Real-time Verbindungen komplett für Stabilität
         this.db.settings({
-            experimentalForceLongPolling: true, // Stabilere Verbindung als Webchannel
+            experimentalForceLongPolling: true,
             ignoreUndefinedProperties: true
         });
+        
+        // Flag für Real-time Listener (standardmäßig deaktiviert)
+        this.useRealTimeUpdates = false;
         
         this.auth = firebase.auth();
 
@@ -152,50 +154,65 @@ class KlassenarbeitsPlaner {
 
             console.log(`${this.exams.length} Klassenarbeiten aus Firebase geladen`);
 
-            // Real-time Listener mit reduzierter Aktivität
-            this.unsubscribeExams = query.onSnapshot({
-                includeMetadataChanges: false // Reduziert Webchannel-Traffic
-            }, (snapshot) => {
-                try {
-                    const oldCount = this.exams.length;
-                    this.exams = [];
-                    
-                    snapshot.forEach((doc) => {
-                        if (doc.exists) {
-                            this.exams.push({
-                                id: doc.id,
-                                ...doc.data()
-                            });
-                        }
-                    });
-                    
-                    if (this.exams.length !== oldCount) {
-                        console.log(`Real-time Update: ${this.exams.length} Klassenarbeiten`);
-                    }
-                    
-                    // UI-Updates mit Debouncing um Webchannel-Load zu reduzieren
-                    clearTimeout(this.updateTimeout);
-                    this.updateTimeout = setTimeout(() => {
-                        this.renderCalendar();
-                        this.renderExamList();
-                    }, 100);
-                    
-                } catch (error) {
-                    console.error('Real-time Update Fehler:', error);
-                }
-            }, (error) => {
-                console.error('Real-time Listener Fehler:', error);
-                // Bei Verbindungsfehlern: Fallback zu manuellen Updates
-                console.log('Fallback: Deaktiviere Real-time Listener');
-                if (this.unsubscribeExams) {
-                    this.unsubscribeExams();
-                    this.unsubscribeExams = null;
-                }
-            });
+            // OPTIONAL: Real-time Listener (standardmäßig deaktiviert wegen Webchannel-Problemen)
+            if (this.useRealTimeUpdates) {
+                this.setupRealTimeListener(query);
+            } else {
+                console.log('Real-time Updates deaktiviert - verwende manuelle Aktualisierung für Stabilität');
+            }
 
         } catch (error) {
             console.error(`Fehler beim Laden: ${error.message}`);
             throw error;
+        }
+    }
+
+    setupRealTimeListener(query) {
+        console.log('Aktiviere Real-time Listener...');
+        this.unsubscribeExams = query.onSnapshot({
+            includeMetadataChanges: false
+        }, (snapshot) => {
+            try {
+                const oldCount = this.exams.length;
+                this.exams = [];
+                
+                snapshot.forEach((doc) => {
+                    if (doc.exists) {
+                        this.exams.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    }
+                });
+                
+                if (this.exams.length !== oldCount) {
+                    console.log(`Real-time Update: ${this.exams.length} Klassenarbeiten`);
+                }
+                
+                clearTimeout(this.updateTimeout);
+                this.updateTimeout = setTimeout(() => {
+                    this.renderCalendar();
+                    this.renderExamList();
+                }, 100);
+                
+            } catch (error) {
+                console.error('Real-time Update Fehler:', error);
+            }
+        }, (error) => {
+            console.error('Real-time Listener Fehler:', error);
+            this.handleWebchannelError(error);
+        });
+    }
+
+    // Manuelle Datenaktualisierung nach Operationen
+    async refreshDataAfterOperation() {
+        try {
+            console.log('Manuelle Datenaktualisierung...');
+            await this.loadExamsFromFirebase();
+            this.renderCalendar();
+            this.renderExamList();
+        } catch (error) {
+            console.error('Fehler bei manueller Aktualisierung:', error);
         }
     }
 
@@ -1222,14 +1239,18 @@ class KlassenarbeitsPlaner {
                     };
                 }
                 
-                // Real-time Listener aktualisiert die Anzeige automatisch
+                // Manuelle Aktualisierung da Real-time deaktiviert
+                await this.refreshDataAfterOperation();
+                
                 console.log(`Klassenarbeit aktualisiert: ${examData.subject} - ${examData.topic}`);
                 this.showNotification('Klassenarbeit erfolgreich aktualisiert!', 'success');
             } else {
                 // Neu hinzufügen
                 const docRef = await this.addExamToFirebase(examData);
                 
-                // Nicht zur lokalen Liste hinzufügen - der Real-time Listener macht das automatisch
+                // Manuelle Aktualisierung da Real-time deaktiviert
+                await this.refreshDataAfterOperation();
+                
                 console.log(`Neue Klassenarbeit hinzugefügt: ${examData.subject} - ${examData.topic} (ID: ${docRef.id})`);
                 this.showNotification('Klassenarbeit erfolgreich gespeichert!', 'success');
             }
@@ -1401,11 +1422,13 @@ class KlassenarbeitsPlaner {
         try {
             console.log('Starte Löschvorgang für ID:', examId);
             
-            // WICHTIG: Erst Firebase löschen, dann lokale Liste
+            // Firebase löschen
             await this.deleteExamFromFirebase(examId);
             console.log('Firebase-Löschung erfolgreich');
             
-            // Real-time Listener entfernt automatisch aus lokaler Liste und aktualisiert Anzeige
+            // Manuelle Aktualisierung da Real-time deaktiviert
+            await this.refreshDataAfterOperation();
+            
             console.log(`Klassenarbeit erfolgreich gelöscht: ${exam.subject} - ${exam.topic}`);
             this.showNotification('Klassenarbeit erfolgreich gelöscht!', 'success');
         } catch (error) {

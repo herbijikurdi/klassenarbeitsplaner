@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin-Bereich - Klassenarbeitsplaner</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="admin-styles.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <i class="fas fa-shield-alt fa-3x"></i>
+            <h2>Admin-Bereich</h2>
+            <div class="loading-spinner"></div>
+            <p>Lade Admin-Dashboard...</p>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <div class="login-header">
+                <i class="fas fa-shield-alt"></i>
+                <h1>Admin-Anmeldung</h1>
+                <p>Klassenarbeitsplaner Administration</p>
+            </div>
+            
+            <form id="adminLoginForm" class="login-form">
+                <div class="form-group">
+                    <label for="adminEmail">Admin-Email:</label>
+                    <input type="email" id="adminEmail" value="admin@admin.admin" readonly>
+                    <i class="fas fa-lock input-icon"></i>
+                </div>
+                
+                <div class="form-group">
+                    <label for="adminPassword">Passwort:</label>
+                    <input type="password" id="adminPassword" placeholder="Admin-Passwort eingeben" required>
+                    <i class="fas fa-key input-icon"></i>
+                    <button type="button" class="password-toggle" id="passwordToggle">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                
+                <button type="submit" class="login-btn">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Admin-Anmeldung
+                </button>
+            </form>
+            
+            <div class="login-footer">
+                <a href="index.html" class="back-link">
+                    <i class="fas fa-arrow-left"></i>
+                    Zurück zur Hauptseite
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard" class="admin-dashboard hidden">
+        <!-- Header -->
+        <header class="admin-header">
+            <div class="header-left">
+                <h1><i class="fas fa-shield-alt"></i> Admin-Dashboard</h1>
+                <span class="admin-badge">Administrator</span>
+            </div>
+            <div class="header-right">
+                <span id="adminUserInfo" class="user-info">admin@admin.admin</span>
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Abmelden
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <i class="fas fa-calendar-alt"></i>
+                <div class="stat-info">
+                    <h3 id="totalExams">0</h3>
+                    <p>Gesamt Klassenarbeiten</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-users"></i>
+                <div class="stat-info">
+                    <h3 id="totalUsers">0</h3>
+                    <p>Aktive Benutzer</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-clock"></i>
+                <div class="stat-info">
+                    <h3 id="recentExams">0</h3>
+                    <p>Diese Woche</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div class="stat-info">
+                    <h3 id="urgentExams">0</h3>
+                    <p>Nächste 7 Tage</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <button id="addExamBtn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Neue Klassenarbeit
+                    </button>
+                    <button id="refreshDataBtn" class="btn btn-secondary">
+                        <i class="fas fa-sync-alt"></i>
+                        Daten aktualisieren
+                    </button>
+                </div>
+                <div class="toolbar-right">
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Suchen...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <select id="filterSelect" class="filter-select">
+                        <option value="">Alle anzeigen</option>
+                        <option value="upcoming">Anstehend</option>
+                        <option value="past">Vergangen</option>
+                        <option value="thisweek">Diese Woche</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Exam List -->
+            <div class="exam-list-container">
+                <div class="exam-list-header">
+                    <h2>Alle Klassenarbeiten</h2>
+                    <span id="examCount" class="count-badge">0 Einträge</span>
+                </div>
+                <div id="adminExamList" class="admin-exam-list">
+                    <!-- Exam items will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="adminExamModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Neue Klassenarbeit</h2>
+                <button class="modal-close" id="modalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="adminExamForm" class="modal-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="subject">Fach *</label>
+                        <input type="text" id="subject" name="subject" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="topic">Thema *</label>
+                        <input type="text" id="topic" name="topic" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="date">Datum *</label>
+                        <input type="date" id="date" name="date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="time">Uhrzeit</label>
+                        <input type="time" id="time" name="time">
+                    </div>
+                    <div class="form-group">
+                        <label for="teacher">Lehrer</label>
+                        <input type="text" id="teacher" name="teacher">
+                    </div>
+                    <div class="form-group">
+                        <label for="notes">Notizen</label>
+                        <textarea id="notes" name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="cancelBtn" class="btn btn-secondary">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="notification-container"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    
+    <!-- Admin Script -->
+    <script src="admin-script.js"></script>
+</body>
+</html>

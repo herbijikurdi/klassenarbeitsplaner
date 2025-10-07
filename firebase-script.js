@@ -33,8 +33,7 @@ class KlassenarbeitsPlaner {
     }
 
     async init() {
-        this.showLoadingIndicator(true);
-        this.updateConnectionStatus('connecting');
+    this.showLoadingIndicator(true);
         
         try {
             // Authentifizierung
@@ -49,12 +48,12 @@ class KlassenarbeitsPlaner {
             // Online/Offline Status überwachen
             this.setupOnlineOfflineHandlers();
             
-            this.updateConnectionStatus('online');
+            // Verbindung zu Firestore wird nicht mehr angezeigt
             
         } catch (error) {
             console.error('Initialisierung fehlgeschlagen:', error);
             this.showNotification('Fehler beim Laden der App. Versuche es erneut...', 'error');
-            this.updateConnectionStatus('error');
+            // Verbindung zu Firestore wird nicht mehr angezeigt
             // Fallback auf LocalStorage
             this.loadFromLocalStorage();
         } finally {
@@ -125,7 +124,6 @@ class KlassenarbeitsPlaner {
     setupOnlineOfflineHandlers() {
         window.addEventListener('online', () => {
             this.isOnline = true;
-            this.updateConnectionStatus('online');
             this.showNotification('Verbindung wiederhergestellt', 'success');
             // Versuche Offline-Daten zu synchronisieren
             this.syncOfflineData();
@@ -133,41 +131,12 @@ class KlassenarbeitsPlaner {
 
         window.addEventListener('offline', () => {
             this.isOnline = false;
-            this.updateConnectionStatus('offline');
+            // Verbindung zu Firestore wird nicht mehr angezeigt
             this.showNotification('Offline-Modus aktiviert', 'warning');
         });
     }
 
-    updateConnectionStatus(status) {
-        const statusElement = document.getElementById('connectionStatus');
-        const iconElement = document.getElementById('statusIcon');
-        const textElement = document.getElementById('statusText');
-        
-        if (!statusElement) return;
-        
-        // Entferne alle Status-Klassen
-        statusElement.classList.remove('online', 'offline', 'error', 'connecting');
-        
-        switch (status) {
-            case 'online':
-                statusElement.classList.add('online');
-                textElement.textContent = 'Online';
-                break;
-            case 'offline':
-                statusElement.classList.add('offline');
-                textElement.textContent = 'Offline';
-                break;
-            case 'error':
-                statusElement.classList.add('error');
-                textElement.textContent = 'Fehler';
-                break;
-            case 'connecting':
-            default:
-                statusElement.classList.add('connecting');
-                textElement.textContent = 'Verbinde...';
-                break;
-        }
-    }
+    // updateConnectionStatus entfernt
 
     async syncOfflineData() {
         // Hier könnte man eine komplexere Sync-Logik implementieren

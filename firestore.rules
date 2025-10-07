@@ -1,0 +1,79 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Admin-Benutzer hat vollen Zugriff auf alle Daten
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'admin@admin.admin';
+    }
+    
+    // Normale Benutzer-Authentifizierung
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Überprüft ob der Benutzer der Besitzer der Daten ist
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Globale Klassenarbeiten Collection (für alle zugänglich)
+    match /exams/{examId} {
+      // Lesen: Alle authentifizierten Benutzer
+      allow read: if isAuthenticated();
+      
+      // Schreiben: Nur Admin oder wenn der Benutzer der Ersteller ist
+      allow write: if isAdmin() || (isAuthenticated() && 
+        (request.auth.uid == resource.data.ownerId || 
+         request.auth.uid == request.resource.data.ownerId));
+         
+      // Admin kann alles löschen
+      allow delete: if isAdmin() || (isAuthenticated() && request.auth.uid == resource.data.ownerId);
+    }
+    
+    // Benutzer-spezifische Collections
+    match /users/{userId} {
+      // Admin hat vollen Zugriff, Benutzer nur auf eigene Daten
+      allow read, write: if isAdmin() || isOwner(userId);
+      
+      // Benutzer-spezifische Klassenarbeiten
+      match /exams/{examId} {
+        // Admin hat vollen Zugriff, Benutzer nur auf eigene Exams
+        allow read, write, delete: if isAdmin() || isOwner(userId);
+      }
+      
+      // Benutzer-Einstellungen
+      match /settings/{settingId} {
+        allow read, write: if isAdmin() || isOwner(userId);
+      }
+    }
+    
+    // Admin-spezifische Collections (nur für Admin zugänglich)
+    match /admin/{document=**} {
+      allow read, write, delete: if isAdmin();
+    }
+    
+    // System-Logs (nur Admin kann lesen)
+    match /logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if isAuthenticated(); // Alle können Logs schreiben
+    }
+    
+    // Statistiken (Admin kann alles, andere nur lesen)
+    match /stats/{statId} {
+      allow read: if isAuthenticated();
+      allow write, delete: if isAdmin();
+    }
+    
+    // Backup-Collections (nur Admin)
+    match /backups/{backupId} {
+      allow read, write, delete: if isAdmin();
+    }
+    
+    // Fallback: Alles andere nur für Admin
+    match /{document=**} {
+      allow read, write, delete: if isAdmin();
+    }
+  }
+}
