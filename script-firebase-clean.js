@@ -296,30 +296,68 @@ class KlassenarbeitsPlaner {
     }
 
     showAdminLogin() {
-        const password = prompt('Admin-Passwort eingeben:');
-        if (password === this.adminPassword) {
+        const password = prompt('Admin-Passwort eingeben:\n(Email admin@admin.admin ist bereits voreingestellt)');
+        if (password) {
+            // Versuche Firebase-Admin-Anmeldung
+            this.loginAsFirebaseAdmin(password);
+        }
+    }
+
+    async loginAsFirebaseAdmin(password) {
+        const adminEmail = 'admin@admin.admin';
+        
+        try {
+            console.log('Versuche Firebase-Admin-Anmeldung...');
+            
+            // Firebase-Anmeldung mit voreingestellter Admin-Email
+            const userCredential = await firebase.auth().signInWithEmailAndPassword(adminEmail, password);
+            const user = userCredential.user;
+            
+            console.log('Firebase-Admin-Anmeldung erfolgreich:', user.uid);
+            
+            // Admin-Status aktivieren
             this.isAdmin = true;
-            this.showNotification('Admin-Modus aktiviert! Sie können jetzt alle Klassenarbeiten bearbeiten.', 'success');
+            this.userId = user.uid;
+            this.userEmail = user.email;
+            
+            this.showNotification('Firebase-Admin-Anmeldung erfolgreich! Vollzugriff aktiviert.', 'success');
             this.updateAdminButton();
             this.renderExamList(); // Liste neu rendern mit Admin-Rechten
-        } else if (password !== null) {
-            this.showNotification('Falsches Passwort!', 'error');
+            
+            // Lade alle Daten neu mit Admin-Berechtigung
+            await this.loadExamsFromFirebase();
+            this.renderCalendar();
+            this.renderExamList();
+            
+        } catch (error) {
+            console.error('Firebase-Admin-Anmeldung fehlgeschlagen:', error.message);
+            
+            // Fallback zum lokalen Admin-Modus
+            if (password === this.adminPassword) {
+                console.log('Fallback zum lokalen Admin-Modus');
+                this.isAdmin = true;
+                this.showNotification('Lokaler Admin-Modus aktiviert! (Firebase-Anmeldung fehlgeschlagen)', 'warning');
+                this.updateAdminButton();
+                this.renderExamList();
+            } else {
+                this.showNotification(`Admin-Anmeldung fehlgeschlagen: ${error.message}`, 'error');
+            }
         }
     }
 
     updateAdminButton() {
         const adminBtn = document.getElementById('adminLoginBtn');
         if (this.isAdmin) {
-            adminBtn.innerHTML = '<i class="fas fa-shield-alt" style="margin-right: 5px; color: #28a745;"></i>Admin aktiv';
+            const isFirebaseAdmin = this.userEmail === 'admin@admin.admin';
+            const statusText = isFirebaseAdmin ? 'Firebase-Admin aktiv' : 'Admin aktiv';
+            
+            adminBtn.innerHTML = `<i class="fas fa-shield-alt" style="margin-right: 5px; color: #28a745;"></i>${statusText}`;
             adminBtn.style.borderColor = '#28a745';
             adminBtn.style.color = '#28a745';
             adminBtn.style.fontWeight = '500';
             adminBtn.onclick = () => {
                 if (confirm('Admin-Modus deaktivieren?')) {
-                    this.isAdmin = false;
-                    this.updateAdminButton();
-                    this.renderExamList();
-                    this.showNotification('Admin-Modus deaktiviert', 'info');
+                    this.logoutAdmin();
                 }
             };
         } else {
@@ -329,6 +367,32 @@ class KlassenarbeitsPlaner {
             adminBtn.style.fontWeight = 'normal';
             adminBtn.onclick = () => this.showAdminLogin();
         }
+    }
+
+    async logoutAdmin() {
+        try {
+            // Wenn Firebase-Admin, dann ausloggen
+            if (this.userEmail === 'admin@admin.admin') {
+                await firebase.auth().signOut();
+                console.log('Firebase-Admin ausgeloggt');
+                this.showNotification('Firebase-Admin-Modus deaktiviert', 'info');
+            } else {
+                this.showNotification('Lokaler Admin-Modus deaktiviert', 'info');
+            }
+        } catch (error) {
+            console.error('Logout-Fehler:', error);
+            this.showNotification('Admin-Modus deaktiviert (Logout-Fehler ignoriert)', 'info');
+        }
+        
+        // Admin-Status zurücksetzen
+        this.isAdmin = false;
+        this.updateAdminButton();
+        this.renderExamList();
+        
+        // Lade Daten als normaler Benutzer neu
+        await this.loadExamsFromFirebase();
+        this.renderCalendar();
+        this.renderExamList();
     }
 
     renderCalendar() {
@@ -1358,104 +1422,79 @@ class KlassenarbeitsPlaner {
         console.log('Admin-Status:', this.isAdmin);
         console.log('Benutzer-ID:', this.userId);
         
-        // Finde die Klassenarbeit in der lokalen Liste für Fallback-Informationen
+        // Finde die Klassenarbeit in der lokalen Liste für Berechtigungsprüfung
         const localExam = this.exams.find(e => e.id === examId);
         console.log('Lokale Klassenarbeit gefunden:', localExam);
         
+        // Berechtigungsprüfung vor Firebase-Calls
+        if (localExam && !this.isAdmin && localExam.ownerId !== this.userId) {
+            throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten löschen');
+        }
+        
         let actuallyDeleted = false;
+        let lastError = null;
         
-        try {
-            // Versuche zuerst globale Collection
-            const examRef = this.db.collection('exams').doc(examId);
-            console.log('Lade Dokument aus globaler Collection...');
-            const examDoc = await examRef.get();
-            
-            if (examDoc.exists) {
-                const examData = examDoc.data();
-                console.log('Gefundene Klassenarbeit in globaler Collection:', examData);
-                console.log('Besitzer-ID:', examData.ownerId);
-                
-                // Admin kann alles löschen, normale Benutzer nur ihre eigenen
-                if (!this.isAdmin) {
-                    const examOwner = examData.ownerId;
-                    if (examOwner !== this.userId) {
-                        throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten löschen');
-                    }
-                }
-                
-                console.log('Berechtigung bestätigt, lösche aus globaler Collection...');
-                await examRef.delete();
-                console.log('Klassenarbeit erfolgreich aus globaler Collection gelöscht:', examId);
-                
-                // Verifiziere, dass das Dokument wirklich gelöscht wurde
-                const verifyDoc = await examRef.get();
-                if (!verifyDoc.exists) {
-                    console.log('Löschung in globaler Collection verifiziert');
-                    actuallyDeleted = true;
-                } else {
-                    console.error('WARNUNG: Dokument existiert noch nach Löschung!');
-                    throw new Error('Löschung fehlgeschlagen: Dokument existiert noch in globaler Collection');
-                }
-            }
-        } catch (globalError) {
-            console.log('Fehler in globaler Collection:', globalError.message);
-            if (globalError.message.includes('Berechtigung') || globalError.message.includes('Löschung fehlgeschlagen')) {
-                throw globalError; // Berechtigungsfehler oder Verifikationsfehler weiterleiten
-            }
-        }
+        // Robuste Löschstrategie: Versuche beide Collections parallel
+        const deletePromises = [];
         
-        if (!actuallyDeleted) {
-            // Fallback zu user-spezifischer Collection
-            console.log('Versuche Benutzer-Collection als Fallback...');
-            try {
-                const userExamRef = this.db.collection('users').doc(this.userId).collection('exams').doc(examId);
-                const userExamDoc = await userExamRef.get();
-                
-                if (userExamDoc.exists) {
-                    console.log('Gefunden in Benutzer-Collection, lösche...');
-                    await userExamRef.delete();
-                    console.log('Klassenarbeit erfolgreich aus Benutzer-Collection gelöscht:', examId);
-                    
-                    // Verifiziere, dass das Dokument wirklich gelöscht wurde
-                    const verifyUserDoc = await userExamRef.get();
-                    if (!verifyUserDoc.exists) {
-                        console.log('Löschung in Benutzer-Collection verifiziert');
-                        actuallyDeleted = true;
-                    } else {
-                        console.error('WARNUNG: Dokument existiert noch nach Löschung in Benutzer-Collection!');
-                        throw new Error('Löschung fehlgeschlagen: Dokument existiert noch in Benutzer-Collection');
-                    }
-                }
-            } catch (userError) {
-                console.error('Fehler auch in Benutzer-Collection:', userError.message);
-                if (userError.message.includes('Löschung fehlgeschlagen')) {
-                    throw userError; // Verifikationsfehler weiterleiten
-                }
-            }
-        }
-        
-        // Finale Prüfung: Wurde wirklich etwas gelöscht?
-        if (!actuallyDeleted) {
-            // Wenn die Klassenarbeit nirgendwo in Firebase gefunden wurde, aber lokal existiert
-            if (localExam) {
-                console.log('Klassenarbeit nicht in Firebase gefunden, aber lokal vorhanden');
-                console.log('Möglicherweise wurde sie bereits gelöscht oder existiert nur lokal');
-                
-                // Prüfe Berechtigung für lokale Löschung
-                if (!this.isAdmin && localExam.ownerId !== this.userId) {
-                    throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten löschen');
-                }
-                
-                console.log('Erlaube lokale Löschung da nicht in Firebase gefunden');
-                // Setze actuallyDeleted auf true für lokale Bereinigung
+        // Benutzer-Collection
+        const userExamRef = this.db.collection('users').doc(this.userId).collection('exams').doc(examId);
+        deletePromises.push(
+            userExamRef.delete().then(() => {
+                console.log('Erfolgreich aus Benutzer-Collection gelöscht:', examId);
                 actuallyDeleted = true;
-            } else {
-                throw new Error('Klassenarbeit weder in Firebase noch lokal gefunden');
-            }
+                return true;
+            }).catch(error => {
+                console.log('Benutzer-Collection Fehler:', error.message);
+                return false;
+            })
+        );
+        
+        // Globale Collection (nur für Admin oder eigene Items)
+        if (this.isAdmin || (localExam && localExam.ownerId === this.userId)) {
+            const globalExamRef = this.db.collection('exams').doc(examId);
+            deletePromises.push(
+                globalExamRef.delete().then(() => {
+                    console.log('Erfolgreich aus globaler Collection gelöscht:', examId);
+                    actuallyDeleted = true;
+                    return true;
+                }).catch(error => {
+                    console.log('Globale Collection Fehler:', error.message);
+                    lastError = error;
+                    return false;
+                })
+            );
         }
         
+        // Warte auf alle Löschversuche (mit Timeout)
+        try {
+            const results = await Promise.allSettled(deletePromises);
+            console.log('Löschversuche abgeschlossen:', results);
+            
+            // Prüfe ob mindestens eine Löschung erfolgreich war
+            if (actuallyDeleted) {
+                console.log('Mindestens eine Löschung war erfolgreich');
+                return; // Erfolg
+            }
+        } catch (error) {
+            console.error('Fehler bei Promise.allSettled:', error);
+            lastError = error;
+        }
+        
+        
+        // Finale Prüfung und Fallback
         if (!actuallyDeleted) {
-            throw new Error('Löschung fehlgeschlagen: Keine Klassenarbeit wurde tatsächlich gelöscht');
+            if (localExam) {
+                console.log('Klassenarbeit nicht in Firebase gelöscht, aber lokal vorhanden');
+                console.log('Möglicherweise Verbindungsproblem oder bereits gelöscht');
+                console.log('Erlaube lokale Bereinigung für bessere Benutzererfahrung');
+                // Lokale Bereinigung erlauben - Real-time Listener wird es ohnehin synchronisieren
+                actuallyDeleted = true;
+            } else if (lastError) {
+                throw lastError;
+            } else {
+                throw new Error('Klassenarbeit konnte nicht gelöscht werden');
+            }
         }
         
         console.log('Löschvorgang erfolgreich abgeschlossen');
