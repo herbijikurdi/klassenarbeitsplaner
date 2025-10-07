@@ -1,5 +1,5 @@
-// Firebase Klassenarbeitsplaner - Funktionierende Version
-// Alle Daten werden in Firebase gespeichert mit Test-Funktionen
+// Firebase Klassenarbeitsplaner - Saubere Version ohne Test-Interface
+// Alle Daten werden in Firebase gespeichert
 
 const firebaseConfig = {
   apiKey: "AIzaSyCtLOaSFdlMLj5azy5vsYUUpICIo664J0g",
@@ -20,7 +20,8 @@ class KlassenarbeitsPlaner {
         this.db = null;
         this.auth = null;
         this.unsubscribeExams = null;
-        this.testOutput = null;
+        this.isAdmin = false;
+        this.adminPassword = 'klassenplaner2025'; // Admin-Passwort
         
         console.log('🚀 Firebase Klassenarbeitsplaner gestartet');
         this.init();
@@ -28,7 +29,6 @@ class KlassenarbeitsPlaner {
 
     async init() {
         this.updateConnectionStatus('connecting');
-        this.testOutput = document.getElementById('testOutput');
         
         try {
             // Firebase initialisieren
@@ -39,6 +39,7 @@ class KlassenarbeitsPlaner {
             
             // Events binden
             this.bindEvents();
+            this.bindAdminEvents();
             
             // Daten laden
             await this.loadExamsFromFirebase();
@@ -166,158 +167,6 @@ class KlassenarbeitsPlaner {
         }
     }
 
-    bindTestEvents() {
-        // Test-Buttons
-        document.getElementById('testConnection').addEventListener('click', () => {
-            this.testFirebaseConnection();
-        });
-
-        document.getElementById('testWrite').addEventListener('click', () => {
-            this.testWriteToFirebase();
-        });
-
-        document.getElementById('showFirebaseData').addEventListener('click', () => {
-            this.showFirebaseData();
-        });
-
-        document.getElementById('clearTestData').addEventListener('click', () => {
-            this.clearTestData();
-        });
-    }
-
-    async testFirebaseConnection() {
-        this.logTest('🧪 Teste Firebase-Verbindung...', 'info');
-        
-        try {
-            // Teste Authentifizierung
-            const user = this.auth.currentUser;
-            if (!user) {
-                throw new Error('Nicht authentifiziert');
-            }
-            this.logTest(`✅ Authentifizierung OK: ${user.uid.substring(0, 8)}...`, 'success');
-
-            // Teste Firestore-Zugriff
-            const testDoc = await this.db.collection('test').doc('connection').get();
-            this.logTest('✅ Firestore-Zugriff OK', 'success');
-
-            // Teste Schreibberechtigung
-            await this.db.collection('test').doc('write-test').set({
-                timestamp: new Date().toISOString(),
-                test: true,
-                ownerId: this.userId
-            });
-            this.logTest('✅ Schreibberechtigung OK', 'success');
-
-            // Lösche Test-Dokument
-            await this.db.collection('test').doc('write-test').delete();
-            this.logTest('✅ Löschberechtigung OK', 'success');
-
-            this.logTest('🎉 Alle Firebase-Tests erfolgreich!', 'success');
-
-        } catch (error) {
-            this.logTest(`❌ Verbindungstest fehlgeschlagen: ${error.message}`, 'error');
-        }
-    }
-
-    async testWriteToFirebase() {
-        this.logTest('🧪 Erstelle Test-Klassenarbeit...', 'info');
-        
-        try {
-            const testExam = {
-                subject: '🧪 TEST',
-                topic: 'Firebase Verbindungstest',
-                date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // In einer Woche
-                time: '10:00',
-                teacher: 'System',
-                notes: 'Dies ist ein automatischer Test-Eintrag',
-                createdAt: new Date().toISOString(),
-                isTest: true
-            };
-
-            const testExamWithOwner = {
-                ...testExam,
-                ownerId: this.userId,
-                ownerName: `Benutzer ${this.userId.substring(0, 8)}...`
-            };
-            
-            const docRef = await this.db.collection('exams').add(testExamWithOwner);
-            this.logTest(`✅ Test-Klassenarbeit erstellt! ID: ${docRef.id}`, 'success');
-            this.logTest(`📝 Daten: ${JSON.stringify(testExam, null, 2)}`, 'info');
-
-        } catch (error) {
-            this.logTest(`❌ Test-Schreibvorgang fehlgeschlagen: ${error.message}`, 'error');
-        }
-    }
-
-    async showFirebaseData() {
-        this.logTest('📊 Lade alle Firebase-Daten...', 'info');
-        
-        try {
-            const snapshot = await this.db.collection('exams').get();
-            
-            if (snapshot.empty) {
-                this.logTest('📭 Keine Daten in Firebase gefunden', 'info');
-                return;
-            }
-
-            this.logTest(`📊 ${snapshot.size} Dokumente in Firebase:`, 'info');
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                this.logTest(`📄 ID: ${doc.id}`, 'info');
-                this.logTest(`   Fach: ${data.subject} | Thema: ${data.topic}`, 'info');
-                this.logTest(`   Datum: ${data.date} | Zeit: ${data.time || 'nicht gesetzt'}`, 'info');
-                this.logTest(`   Erstellt: ${data.createdAt || 'unbekannt'}`, 'info');
-                this.logTest('   ---', 'info');
-            });
-
-        } catch (error) {
-            this.logTest(`❌ Fehler beim Laden der Daten: ${error.message}`, 'error');
-        }
-    }
-
-    async clearTestData() {
-        this.logTest('🗑️ Lösche alle Test-Einträge...', 'info');
-        
-        try {
-            const snapshot = await this.db.collection('exams')
-                .where('isTest', '==', true)
-                .where('ownerId', '==', this.userId).get();
-            
-            if (snapshot.empty) {
-                this.logTest('📭 Keine Test-Einträge gefunden', 'info');
-                return;
-            }
-
-            const batch = this.db.batch();
-            let count = 0;
-            
-            snapshot.forEach((doc) => {
-                batch.delete(doc.ref);
-                count++;
-            });
-
-            await batch.commit();
-            this.logTest(`✅ ${count} Test-Einträge gelöscht`, 'success');
-
-        } catch (error) {
-            this.logTest(`❌ Fehler beim Löschen: ${error.message}`, 'error');
-        }
-    }
-
-    logTest(message, type = 'info') {
-        if (!this.testOutput) return;
-        
-        const timestamp = new Date().toLocaleTimeString();
-        const logEntry = document.createElement('p');
-        logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="${type}">${message}</span>`;
-        
-        this.testOutput.appendChild(logEntry);
-        this.testOutput.scrollTop = this.testOutput.scrollHeight;
-        
-        // Auch in Console loggen
-        console.log(`[${timestamp}] ${message}`);
-    }
-
     updateConnectionStatus(status) {
         const statusElement = document.getElementById('connectionStatus');
         const textElement = document.getElementById('statusText');
@@ -389,6 +238,48 @@ class KlassenarbeitsPlaner {
                 this.closeModal();
             }
         });
+    }
+
+    bindAdminEvents() {
+        document.getElementById('adminLoginBtn').addEventListener('click', () => {
+            this.showAdminLogin();
+        });
+    }
+
+    showAdminLogin() {
+        const password = prompt('Admin-Passwort eingeben:');
+        if (password === this.adminPassword) {
+            this.isAdmin = true;
+            this.showNotification('Admin-Modus aktiviert! Sie können jetzt alle Klassenarbeiten bearbeiten.', 'success');
+            this.updateAdminButton();
+            this.renderExamList(); // Liste neu rendern mit Admin-Rechten
+        } else if (password !== null) {
+            this.showNotification('Falsches Passwort!', 'error');
+        }
+    }
+
+    updateAdminButton() {
+        const adminBtn = document.getElementById('adminLoginBtn');
+        if (this.isAdmin) {
+            adminBtn.innerHTML = '<i class="fas fa-shield-alt" style="margin-right: 5px; color: #28a745;"></i>Admin aktiv';
+            adminBtn.style.borderColor = '#28a745';
+            adminBtn.style.color = '#28a745';
+            adminBtn.style.fontWeight = '500';
+            adminBtn.onclick = () => {
+                if (confirm('Admin-Modus deaktivieren?')) {
+                    this.isAdmin = false;
+                    this.updateAdminButton();
+                    this.renderExamList();
+                    this.showNotification('Admin-Modus deaktiviert', 'info');
+                }
+            };
+        } else {
+            adminBtn.innerHTML = '<i class="fas fa-cog" style="margin-right: 5px;"></i>Admin';
+            adminBtn.style.borderColor = '#ddd';
+            adminBtn.style.color = '#999';
+            adminBtn.style.fontWeight = 'normal';
+            adminBtn.onclick = () => this.showAdminLogin();
+        }
     }
 
     renderCalendar() {

@@ -55,26 +55,11 @@
             </div>
         </div>
 
-        <!-- Firebase Test-Bereich -->
-        <div class="firebase-test">
-            <h3><i class="fas fa-database"></i> Firebase Test & Debug</h3>
-            <div class="test-controls">
-                <button class="btn-test" id="testConnection">
-                    <i class="fas fa-plug"></i> Verbindung testen
-                </button>
-                <button class="btn-test" id="testWrite">
-                    <i class="fas fa-plus-circle"></i> Test-Eintrag hinzufügen
-                </button>
-                <button class="btn-test" id="showFirebaseData">
-                    <i class="fas fa-eye"></i> Firebase-Daten anzeigen
-                </button>
-                <button class="btn-test" id="clearTestData">
-                    <i class="fas fa-trash"></i> Test-Daten löschen
-                </button>
-            </div>
-            <div class="test-output" id="testOutput">
-                <p>Firebase-Tests werden hier angezeigt...</p>
-            </div>
+        <!-- Diskreter Admin-Login -->
+        <div style="text-align: center; margin-top: 40px; padding: 20px;">
+            <button id="adminLoginBtn" style="background: transparent; border: 1px solid #ddd; color: #999; padding: 8px 16px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; transition: all 0.3s ease;">
+                <i class="fas fa-cog" style="margin-right: 5px;"></i>Admin
+            </button>
         </div>
     </div>
 
@@ -126,6 +111,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     
     <!-- App Script mit Firebase -->
-    <script src="script-firebase-working.js"></script>
+    <script src="script-firebase-clean.js"></script>
 </body>
 </html>
