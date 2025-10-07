@@ -219,6 +219,28 @@ class KlassenarbeitsPlaner {
             this.closeModal();
         });
 
+        // Day-Popup Events (Mobile-optimiert)
+        document.getElementById('dayPopupClose').addEventListener('click', () => {
+            this.closeDayPopup();
+        });
+
+        // Touch-optimierter Background-Close für Mobile
+        document.getElementById('dayPopup').addEventListener('click', (e) => {
+            if (e.target.id === 'dayPopup') {
+                this.closeDayPopup();
+            }
+        });
+
+        // "Ereignis hinzufügen" Button im Popup
+        document.getElementById('addEventForDay').addEventListener('click', () => {
+            // Speichere das ausgewählte Datum bevor das Popup geschlossen wird
+            const dateToAdd = this.selectedDate;
+            console.log('Ereignis hinzufügen für Datum:', this.formatDate(dateToAdd));
+            
+            this.closeDayPopup();
+            this.openModal(dateToAdd);
+        });
+
         // Form Submit
         document.getElementById('examForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -381,7 +403,7 @@ class KlassenarbeitsPlaner {
             }
         }
 
-        // Mobile-optimierte Event-Handler
+        // Mobile-optimierte Event-Handler für Popup
         const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
         
         if (isTouchDevice) {
@@ -425,13 +447,8 @@ class KlassenarbeitsPlaner {
                         
                         console.log('Touch: Gefundene Exams für diesen Tag:', dayExams.length);
                         
-                        if (dayExams.length > 0) {
-                            console.log('Touch: Scrolle zu Exam mit ID:', dayExams[0].id);
-                            this.scrollToExamInList(dayExams[0].id);
-                        } else {
-                            console.log('Touch: Kein Exam vorhanden - öffne Modal');
-                            this.openModal(date);
-                        }
+                        // Zeige immer Popup (egal ob Exams vorhanden oder nicht)
+                        this.showDayPopup(date, dayExams);
                     } else {
                         console.log('Touch-Bewegung zu groß, ignoriere als Scroll-Geste');
                     }
@@ -452,11 +469,8 @@ class KlassenarbeitsPlaner {
                 
                 console.log('Desktop: Gefundene Exams für diesen Tag:', dayExams.length);
                 
-                if (dayExams.length > 0) {
-                    this.scrollToExamInList(dayExams[0].id);
-                } else {
-                    this.openModal(date);
-                }
+                // Zeige immer Popup (egal ob Exams vorhanden oder nicht)
+                this.showDayPopup(date, dayExams);
             });
         }
 
@@ -632,11 +646,35 @@ class KlassenarbeitsPlaner {
 
     closeDayPopup() {
         const dayPopup = document.getElementById('dayPopup');
+        const dayEvents = document.getElementById('dayEvents');
+        
+        // WICHTIG: Entferne ALLE Event-Handler von allen Event-Items
+        if (dayEvents) {
+            const eventItems = dayEvents.querySelectorAll('.day-event-item');
+            eventItems.forEach(item => {
+                // Entferne alle Event-Handler komplett
+                item.onclick = null;
+                item.ontouchend = null;
+                item.ontouchstart = null;
+                
+                // Zusätzlich: Clone und ersetze das Element (entfernt ALLE Event-Listener)
+                const cleanItem = item.cloneNode(true);
+                item.parentNode.replaceChild(cleanItem, item);
+            });
+            
+            console.log('Alle Event-Handler von Day-Event-Items entfernt');
+        }
+        
         dayPopup.style.display = 'none';
         document.body.style.overflow = 'auto';
         this.selectedDate = null;
         
-        console.log('Day-Popup geschlossen');
+        console.log('Day-Popup geschlossen und Event-Handler bereinigt');
+    }
+
+    showDayPopup(date, exams) {
+        // Alias für openDayPopup - für bessere Konsistenz
+        this.openDayPopup(date, exams);
     }
 
     openDayPopup(date, exams) {
@@ -646,6 +684,17 @@ class KlassenarbeitsPlaner {
         const dayPopupTitle = document.getElementById('dayPopupTitle');
         const dayEvents = document.getElementById('dayEvents');
         const noEventsMessage = document.getElementById('noEventsMessage');
+        
+        // Sicherheitsprüfung für kritische Elemente
+        if (!dayPopup || !dayPopupTitle || !dayEvents) {
+            console.error('Kritische Popup-Elemente nicht gefunden:', {
+                dayPopup: !!dayPopup,
+                dayPopupTitle: !!dayPopupTitle,
+                dayEvents: !!dayEvents,
+                noEventsMessage: !!noEventsMessage
+            });
+            return;
+        }
         
         // Format date for title
         const formattedDate = date.toLocaleDateString('de-DE', {
@@ -659,11 +708,64 @@ class KlassenarbeitsPlaner {
         
         if (exams && exams.length > 0) {
             dayEvents.innerHTML = exams.map(exam => this.createDayEventHTML(exam)).join('');
-            noEventsMessage.style.display = 'none';
+            
+            // Sicherheitsprüfung für noEventsMessage
+            if (noEventsMessage) {
+                noEventsMessage.style.display = 'none';
+            }
+            
+            // Füge Event-Handler zu jedem Event-Item hinzu (nach dem Rendern)
+            setTimeout(() => {
+                const eventItems = dayEvents.querySelectorAll('.day-event-item');
+                console.log('Setze neue Event-Handler auf', eventItems.length, 'Event-Items');
+                
+                eventItems.forEach((item, index) => {
+                    const examId = item.dataset.examId;
+                    
+                    // SICHERHEIT: Entferne erst alle alten Handler (falls vorhanden)
+                    item.onclick = null;
+                    item.ontouchend = null;
+                    item.ontouchstart = null;
+                    
+                    // Universelle Handler-Funktion (immer neu erstellt)
+                    const handleInteraction = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log(`Event-Item ${index} Interaktion, Exam-ID:`, examId);
+                        
+                        // Visuelles Feedback
+                        item.style.backgroundColor = '#e3f2fd';
+                        item.style.transform = 'scale(0.95)';
+                        item.style.transition = 'all 0.1s ease';
+                        
+                        setTimeout(() => {
+                            this.closeDayPopup();
+                            setTimeout(() => {
+                                this.scrollToExamInList(examId);
+                            }, 200);
+                        }, 150);
+                    };
+                    
+                    // Setze NEUE Handler (überschreibt alte automatisch)
+                    item.onclick = handleInteraction;
+                    item.ontouchend = handleInteraction;
+                    
+                    console.log(`Event-Handler gesetzt für Item ${index} mit Exam-ID:`, examId);
+                });
+                
+                console.log('Alle Event-Handler neu gesetzt');
+            }, 50);
         } else {
             dayEvents.innerHTML = '';
-            dayEvents.appendChild(noEventsMessage);
-            noEventsMessage.style.display = 'block';
+            
+            // Sicherheitsprüfung für noEventsMessage
+            if (noEventsMessage) {
+                dayEvents.appendChild(noEventsMessage);
+                noEventsMessage.style.display = 'block';
+            } else {
+                // Fallback: Erstelle eine einfache Nachricht
+                dayEvents.innerHTML = '<p style="text-align: center; color: #888; padding: 20px;">Keine Ereignisse an diesem Tag</p>';
+            }
         }
         
         dayPopup.style.display = 'block';
