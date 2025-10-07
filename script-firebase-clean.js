@@ -381,26 +381,84 @@ class KlassenarbeitsPlaner {
             }
         }
 
-        dayElement.addEventListener('click', (e) => {
-            // Verhindere dass Event-Indikatoren das Click-Event blockieren
-            e.stopPropagation();
+        // Mobile-optimierte Event-Handler
+        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        
+        if (isTouchDevice) {
+            // Touch-Events für Mobile-Geräte
+            let touchStartTime = 0;
+            let touchStartX = 0;
+            let touchStartY = 0;
             
-            // Debug-Log
-            console.log('Kalendertag geklickt:', this.formatDate(date));
+            dayElement.addEventListener('touchstart', (e) => {
+                touchStartTime = Date.now();
+                const touch = e.touches[0];
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                console.log('Touch-Start auf Kalendertag:', this.formatDate(date));
+            }, { passive: true });
             
-            this.selectedDate = date;
-            const dayExams = this.getExamsForDate(date);
+            dayElement.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const touchEndTime = Date.now();
+                const touchDuration = touchEndTime - touchStartTime;
+                
+                // Nur bei kurzen Touches (Tap, nicht Scroll)
+                if (touchDuration < 500) {
+                    const touch = e.changedTouches[0];
+                    const touchEndX = touch.clientX;
+                    const touchEndY = touch.clientY;
+                    
+                    // Prüfe ob es wirklich ein Tap war (wenig Bewegung)
+                    const moveDistance = Math.sqrt(
+                        Math.pow(touchEndX - touchStartX, 2) + 
+                        Math.pow(touchEndY - touchStartY, 2)
+                    );
+                    
+                    if (moveDistance < 30) { // Weniger als 30px Bewegung = Tap
+                        console.log('Touch-Tap erkannt auf Kalendertag:', this.formatDate(date));
+                        
+                        this.selectedDate = date;
+                        const dayExams = this.getExamsForDate(date);
+                        
+                        console.log('Touch: Gefundene Exams für diesen Tag:', dayExams.length);
+                        
+                        if (dayExams.length > 0) {
+                            console.log('Touch: Scrolle zu Exam mit ID:', dayExams[0].id);
+                            this.scrollToExamInList(dayExams[0].id);
+                        } else {
+                            console.log('Touch: Kein Exam vorhanden - öffne Modal');
+                            this.openModal(date);
+                        }
+                    } else {
+                        console.log('Touch-Bewegung zu groß, ignoriere als Scroll-Geste');
+                    }
+                } else {
+                    console.log('Touch zu lang, ignoriere als Long-Press');
+                }
+            }, { passive: false });
             
-            console.log('Gefundene Exams für diesen Tag:', dayExams.length);
-            
-            if (dayExams.length > 0) {
-                // Scrolle zum ersten Exam des Tages
-                this.scrollToExamInList(dayExams[0].id);
-            } else {
-                // Kein Exam vorhanden - öffne Modal für neuen Eintrag
-                this.openModal(date);
-            }
-        });
+        } else {
+            // Standard Click-Events für Desktop
+            dayElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                console.log('Desktop-Click: Kalendertag geklickt:', this.formatDate(date));
+                
+                this.selectedDate = date;
+                const dayExams = this.getExamsForDate(date);
+                
+                console.log('Desktop: Gefundene Exams für diesen Tag:', dayExams.length);
+                
+                if (dayExams.length > 0) {
+                    this.scrollToExamInList(dayExams[0].id);
+                } else {
+                    this.openModal(date);
+                }
+            });
+        }
 
         return dayElement;
     }
