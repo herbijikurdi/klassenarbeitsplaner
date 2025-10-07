@@ -1,7 +1,6 @@
-// Hybride Version: Firebase + LocalStorage Fallback
-// Versucht Firebase zu nutzen, fällt aber elegant auf LocalStorage zurück
+// Firebase Klassenarbeitsplaner mit Test-Funktionen
+// Alle Daten werden in Firebase gespeichert mit ausführlichen Tests
 
-// Firebase Konfiguration
 const firebaseConfig = {
   apiKey: "AIzaSyCtLOaSFdlMLj5azy5vsYUUpICIo664J0g",
   authDomain: "klassenarbeitsplaner-674b4.firebaseapp.com",
@@ -18,50 +17,50 @@ class KlassenarbeitsPlaner {
         this.selectedDate = null;
         this.editingExam = null;
         this.userId = null;
-        this.isFirebaseAvailable = false;
         this.db = null;
         this.auth = null;
         this.unsubscribeExams = null;
+        this.testOutput = null;
         
-        console.log('Hybride Klassenarbeitsplaner gestartet');
+        console.log('🚀 Firebase Klassenarbeitsplaner mit Tests gestartet');
         this.init();
     }
 
     async init() {
         this.updateConnectionStatus('connecting');
+        this.testOutput = document.getElementById('testOutput');
         
-        // Versuche Firebase zu initialisieren
         try {
+            // Firebase initialisieren
             await this.initFirebase();
-        } catch (error) {
-            console.log('Firebase nicht verfügbar, nutze LocalStorage:', error);
-            this.isFirebaseAvailable = false;
-        }
-        
-        // Lade Daten
-        if (this.isFirebaseAvailable) {
-            await this.loadFromFirebase();
-        } else {
-            this.loadFromLocalStorage();
-        }
-        
-        // UI initialisieren
-        this.bindEvents();
-        this.renderCalendar();
-        this.renderExamList();
-        
-        // Status-Feedback
-        if (this.isFirebaseAvailable) {
+            
+            // Authentifizierung
+            await this.authenticateUser();
+            
+            // Events binden
+            this.bindEvents();
+            this.bindTestEvents();
+            
+            // Daten laden
+            await this.loadExamsFromFirebase();
+            
+            // UI rendern
+            this.renderCalendar();
+            this.renderExamList();
+            
             this.updateConnectionStatus('online');
-            this.showNotification('Cloud-Synchronisation aktiv!', 'success');
-        } else {
-            this.updateConnectionStatus('offline');
-            this.showNotification('App läuft im lokalen Modus', 'info');
+            this.logTest('✅ Firebase erfolgreich verbunden!', 'success');
+            this.showNotification('Firebase-Verbindung aktiv!', 'success');
+            
+        } catch (error) {
+            console.error('Firebase Initialisierung fehlgeschlagen:', error);
+            this.updateConnectionStatus('error');
+            this.logTest(`❌ Firebase-Fehler: ${error.message}`, 'error');
+            this.showNotification('Firebase-Verbindung fehlgeschlagen!', 'error');
         }
     }
 
     async initFirebase() {
-        // Prüfe ob Firebase verfügbar ist
         if (typeof firebase === 'undefined') {
             throw new Error('Firebase SDK nicht geladen');
         }
@@ -76,12 +75,7 @@ class KlassenarbeitsPlaner {
 
         // Teste Firestore-Verbindung
         await this.db.enableNetwork();
-
-        // Authentifizierung
-        await this.authenticateUser();
-
-        this.isFirebaseAvailable = true;
-        console.log('Firebase erfolgreich initialisiert');
+        this.logTest('🔥 Firebase SDK initialisiert', 'info');
     }
 
     async authenticateUser() {
@@ -90,32 +84,32 @@ class KlassenarbeitsPlaner {
                 try {
                     if (user) {
                         this.userId = user.uid;
-                        console.log('Benutzer angemeldet:', this.userId);
+                        this.logTest(`👤 Benutzer angemeldet: ${this.userId.substring(0, 8)}...`, 'success');
                         unsubscribe();
                         resolve();
                     } else {
-                        console.log('Starte anonyme Anmeldung...');
+                        this.logTest('🔐 Starte anonyme Anmeldung...', 'info');
                         const userCredential = await this.auth.signInAnonymously();
                         this.userId = userCredential.user.uid;
-                        console.log('Anonyme Anmeldung erfolgreich:', this.userId);
+                        this.logTest(`✅ Anonyme Anmeldung erfolgreich: ${this.userId.substring(0, 8)}...`, 'success');
                         unsubscribe();
                         resolve();
                     }
                 } catch (error) {
+                    this.logTest(`❌ Authentifizierung fehlgeschlagen: ${error.message}`, 'error');
                     unsubscribe();
                     reject(error);
                 }
             });
 
-            // Timeout nach 5 Sekunden
             setTimeout(() => {
                 unsubscribe();
                 reject(new Error('Authentifizierung timeout'));
-            }, 5000);
+            }, 10000);
         });
     }
 
-    async loadFromFirebase() {
+    async loadExamsFromFirebase() {
         if (!this.userId || !this.db) return;
 
         try {
@@ -132,10 +126,11 @@ class KlassenarbeitsPlaner {
                 });
             });
 
-            console.log(`${this.exams.length} Klassenarbeiten aus Firebase geladen`);
+            this.logTest(`📥 ${this.exams.length} Klassenarbeiten aus Firebase geladen`, 'info');
 
-            // Real-time Listener für Änderungen
+            // Real-time Listener
             this.unsubscribeExams = query.onSnapshot((snapshot) => {
+                const oldCount = this.exams.length;
                 this.exams = [];
                 snapshot.forEach((doc) => {
                     this.exams.push({
@@ -143,34 +138,163 @@ class KlassenarbeitsPlaner {
                         ...doc.data()
                     });
                 });
+                
+                if (this.exams.length !== oldCount) {
+                    this.logTest(`🔄 Real-time Update: ${this.exams.length} Klassenarbeiten`, 'info');
+                }
+                
                 this.renderCalendar();
                 this.renderExamList();
-                this.saveToLocalStorage(); // Backup
             });
 
         } catch (error) {
-            console.error('Fehler beim Laden aus Firebase:', error);
-            this.loadFromLocalStorage();
+            this.logTest(`❌ Fehler beim Laden: ${error.message}`, 'error');
+            throw error;
         }
     }
 
-    loadFromLocalStorage() {
+    bindTestEvents() {
+        // Test-Buttons
+        document.getElementById('testConnection').addEventListener('click', () => {
+            this.testFirebaseConnection();
+        });
+
+        document.getElementById('testWrite').addEventListener('click', () => {
+            this.testWriteToFirebase();
+        });
+
+        document.getElementById('showFirebaseData').addEventListener('click', () => {
+            this.showFirebaseData();
+        });
+
+        document.getElementById('clearTestData').addEventListener('click', () => {
+            this.clearTestData();
+        });
+    }
+
+    async testFirebaseConnection() {
+        this.logTest('🧪 Teste Firebase-Verbindung...', 'info');
+        
         try {
-            const stored = localStorage.getItem('klassenarbeiten');
-            this.exams = stored ? JSON.parse(stored) : [];
-            console.log(`${this.exams.length} Klassenarbeiten aus LocalStorage geladen`);
+            // Teste Authentifizierung
+            const user = this.auth.currentUser;
+            if (!user) {
+                throw new Error('Nicht authentifiziert');
+            }
+            this.logTest(`✅ Authentifizierung OK: ${user.uid.substring(0, 8)}...`, 'success');
+
+            // Teste Firestore-Zugriff
+            const testDoc = await this.db.collection('test').doc('connection').get();
+            this.logTest('✅ Firestore-Zugriff OK', 'success');
+
+            // Teste Schreibberechtigung
+            await this.db.collection('users').doc(this.userId).collection('test').doc('write-test').set({
+                timestamp: new Date().toISOString(),
+                test: true
+            });
+            this.logTest('✅ Schreibberechtigung OK', 'success');
+
+            // Lösche Test-Dokument
+            await this.db.collection('users').doc(this.userId).collection('test').doc('write-test').delete();
+            this.logTest('✅ Löschberechtigung OK', 'success');
+
+            this.logTest('🎉 Alle Firebase-Tests erfolgreich!', 'success');
+
         } catch (error) {
-            console.error('Fehler beim Laden aus LocalStorage:', error);
-            this.exams = [];
+            this.logTest(`❌ Verbindungstest fehlgeschlagen: ${error.message}`, 'error');
         }
     }
 
-    saveToLocalStorage() {
+    async testWriteToFirebase() {
+        this.logTest('🧪 Erstelle Test-Klassenarbeit...', 'info');
+        
         try {
-            localStorage.setItem('klassenarbeiten', JSON.stringify(this.exams));
+            const testExam = {
+                subject: '🧪 TEST',
+                topic: 'Firebase Verbindungstest',
+                date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // In einer Woche
+                time: '10:00',
+                teacher: 'System',
+                notes: 'Dies ist ein automatischer Test-Eintrag',
+                createdAt: new Date().toISOString(),
+                isTest: true
+            };
+
+            const docRef = await this.db.collection('users').doc(this.userId).collection('exams').add(testExam);
+            this.logTest(`✅ Test-Klassenarbeit erstellt! ID: ${docRef.id}`, 'success');
+            this.logTest(`📝 Daten: ${JSON.stringify(testExam, null, 2)}`, 'info');
+
         } catch (error) {
-            console.error('Fehler beim Speichern in LocalStorage:', error);
+            this.logTest(`❌ Test-Schreibvorgang fehlgeschlagen: ${error.message}`, 'error');
         }
+    }
+
+    async showFirebaseData() {
+        this.logTest('📊 Lade alle Firebase-Daten...', 'info');
+        
+        try {
+            const snapshot = await this.db.collection('users').doc(this.userId).collection('exams').get();
+            
+            if (snapshot.empty) {
+                this.logTest('📭 Keine Daten in Firebase gefunden', 'info');
+                return;
+            }
+
+            this.logTest(`📊 ${snapshot.size} Dokumente in Firebase:`, 'info');
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                this.logTest(`📄 ID: ${doc.id}`, 'info');
+                this.logTest(`   Fach: ${data.subject} | Thema: ${data.topic}`, 'info');
+                this.logTest(`   Datum: ${data.date} | Zeit: ${data.time || 'nicht gesetzt'}`, 'info');
+                this.logTest(`   Erstellt: ${data.createdAt || 'unbekannt'}`, 'info');
+                this.logTest('   ---', 'info');
+            });
+
+        } catch (error) {
+            this.logTest(`❌ Fehler beim Laden der Daten: ${error.message}`, 'error');
+        }
+    }
+
+    async clearTestData() {
+        this.logTest('🗑️ Lösche alle Test-Einträge...', 'info');
+        
+        try {
+            const snapshot = await this.db.collection('users').doc(this.userId).collection('exams')
+                .where('isTest', '==', true).get();
+            
+            if (snapshot.empty) {
+                this.logTest('📭 Keine Test-Einträge gefunden', 'info');
+                return;
+            }
+
+            const batch = this.db.batch();
+            let count = 0;
+            
+            snapshot.forEach((doc) => {
+                batch.delete(doc.ref);
+                count++;
+            });
+
+            await batch.commit();
+            this.logTest(`✅ ${count} Test-Einträge gelöscht`, 'success');
+
+        } catch (error) {
+            this.logTest(`❌ Fehler beim Löschen: ${error.message}`, 'error');
+        }
+    }
+
+    logTest(message, type = 'info') {
+        if (!this.testOutput) return;
+        
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = document.createElement('p');
+        logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="${type}">${message}</span>`;
+        
+        this.testOutput.appendChild(logEntry);
+        this.testOutput.scrollTop = this.testOutput.scrollHeight;
+        
+        // Auch in Console loggen
+        console.log(`[${timestamp}] ${message}`);
     }
 
     updateConnectionStatus(status) {
@@ -184,19 +308,19 @@ class KlassenarbeitsPlaner {
         switch (status) {
             case 'online':
                 statusElement.classList.add('online');
-                textElement.textContent = 'Online (Cloud)';
+                textElement.textContent = 'Firebase Online';
                 break;
-            case 'offline':
-                statusElement.classList.add('offline');
-                textElement.textContent = 'Lokal';
+            case 'error':
+                statusElement.classList.add('error');
+                textElement.textContent = 'Firebase Fehler';
                 break;
             case 'connecting':
                 statusElement.classList.add('connecting');
-                textElement.textContent = 'Verbinde...';
+                textElement.textContent = 'Verbinde zu Firebase...';
                 break;
             default:
                 statusElement.classList.add('offline');
-                textElement.textContent = 'Bereit';
+                textElement.textContent = 'Offline';
         }
     }
 
@@ -326,6 +450,10 @@ class KlassenarbeitsPlaner {
                 examElement.className = 'exam-indicator';
                 examElement.textContent = exam.subject;
                 examElement.title = `${exam.subject}: ${exam.topic}`;
+                if (exam.isTest) {
+                    examElement.style.background = '#ffc107';
+                    examElement.style.color = '#333';
+                }
                 dayElement.appendChild(examElement);
             });
 
@@ -406,12 +534,13 @@ class KlassenarbeitsPlaner {
         const timeDisplay = exam.time ? ` um ${exam.time}` : '';
         const teacherDisplay = exam.teacher ? `<span><i class="fas fa-user"></i> ${exam.teacher}</span>` : '';
         const notesDisplay = exam.notes ? `<div style="margin-top: 8px; font-style: italic; color: #666;">"${exam.notes}"</div>` : '';
-        const cloudIcon = this.isFirebaseAvailable ? '<i class="fas fa-cloud" style="color: #28a745; margin-left: 8px;" title="In Cloud gespeichert"></i>' : '';
+        const firebaseIcon = '<i class="fas fa-cloud" style="color: #4285f4; margin-left: 8px;" title="In Firebase gespeichert"></i>';
+        const testBadge = exam.isTest ? '<span style="background: #ffc107; color: #333; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px;">TEST</span>' : '';
 
         return `
-            <div class="exam-item">
+            <div class="exam-item" ${exam.isTest ? 'style="border-left: 4px solid #ffc107;"' : ''}>
                 <div class="exam-item-header">
-                    <div class="exam-subject">${exam.subject}${cloudIcon}</div>
+                    <div class="exam-subject">${exam.subject}${firebaseIcon}${testBadge}</div>
                     <div class="exam-date">${formattedDate}${timeDisplay}</div>
                 </div>
                 <div class="exam-topic">${exam.topic}</div>
@@ -498,30 +627,22 @@ class KlassenarbeitsPlaner {
         }
 
         try {
-            if (this.isFirebaseAvailable) {
-                // Firebase speichern
-                if (this.editingExam) {
-                    await this.updateExamInFirebase(this.editingExam.id, examData);
-                    this.showNotification('Klassenarbeit in Cloud aktualisiert!', 'success');
-                } else {
-                    await this.addExamToFirebase(examData);
-                    this.showNotification('Klassenarbeit in Cloud gespeichert!', 'success');
-                }
+            if (this.editingExam) {
+                // Bearbeiten
+                await this.updateExamInFirebase(this.editingExam.id, examData);
+                this.logTest(`✏️ Klassenarbeit aktualisiert: ${examData.subject} - ${examData.topic}`, 'success');
+                this.showNotification('Klassenarbeit in Firebase aktualisiert!', 'success');
             } else {
-                // LocalStorage fallback
-                this.saveExamLocally(examData);
-                this.showNotification(
-                    this.editingExam ? 'Klassenarbeit aktualisiert!' : 'Klassenarbeit gespeichert!',
-                    'success'
-                );
+                // Neu hinzufügen
+                const docRef = await this.addExamToFirebase(examData);
+                this.logTest(`➕ Neue Klassenarbeit hinzugefügt: ${examData.subject} - ${examData.topic} (ID: ${docRef.id})`, 'success');
+                this.showNotification('Klassenarbeit in Firebase gespeichert!', 'success');
             }
             
             this.closeModal();
         } catch (error) {
-            console.error('Fehler beim Speichern:', error);
-            this.showNotification('Fehler beim Speichern. Versuche lokalen Modus...', 'error');
-            this.saveExamLocally(examData);
-            this.closeModal();
+            this.logTest(`❌ Fehler beim Speichern: ${error.message}`, 'error');
+            this.showNotification('Fehler beim Speichern in Firebase!', 'error');
         }
     }
 
@@ -531,7 +652,7 @@ class KlassenarbeitsPlaner {
         const examsRef = this.db.collection('users').doc(this.userId).collection('exams');
         const docRef = await examsRef.add(examData);
         console.log('Klassenarbeit zu Firebase hinzugefügt:', docRef.id);
-        return docRef.id;
+        return docRef;
     }
 
     async updateExamInFirebase(examId, examData) {
@@ -543,26 +664,6 @@ class KlassenarbeitsPlaner {
             updatedAt: new Date().toISOString()
         });
         console.log('Klassenarbeit in Firebase aktualisiert:', examId);
-    }
-
-    saveExamLocally(examData) {
-        const localExam = {
-            id: this.editingExam ? this.editingExam.id : Date.now().toString(),
-            ...examData
-        };
-        
-        if (this.editingExam) {
-            const index = this.exams.findIndex(exam => exam.id === this.editingExam.id);
-            if (index !== -1) {
-                this.exams[index] = localExam;
-            }
-        } else {
-            this.exams.push(localExam);
-        }
-        
-        this.saveToLocalStorage();
-        this.renderCalendar();
-        this.renderExamList();
     }
 
     editExam(examId) {
@@ -581,17 +682,12 @@ class KlassenarbeitsPlaner {
         }
 
         try {
-            if (this.isFirebaseAvailable) {
-                await this.deleteExamFromFirebase(examId);
-                this.showNotification('Klassenarbeit aus Cloud gelöscht!', 'success');
-            } else {
-                this.deleteExamLocally(examId);
-                this.showNotification('Klassenarbeit gelöscht!', 'success');
-            }
+            await this.deleteExamFromFirebase(examId);
+            this.logTest(`🗑️ Klassenarbeit gelöscht: ${exam.subject} - ${exam.topic}`, 'success');
+            this.showNotification('Klassenarbeit aus Firebase gelöscht!', 'success');
         } catch (error) {
-            console.error('Fehler beim Löschen:', error);
-            this.showNotification('Fehler beim Löschen. Versuche lokalen Modus...', 'error');
-            this.deleteExamLocally(examId);
+            this.logTest(`❌ Fehler beim Löschen: ${error.message}`, 'error');
+            this.showNotification('Fehler beim Löschen!', 'error');
         }
     }
 
@@ -603,21 +699,14 @@ class KlassenarbeitsPlaner {
         console.log('Klassenarbeit aus Firebase gelöscht:', examId);
     }
 
-    deleteExamLocally(examId) {
-        this.exams = this.exams.filter(e => e.id !== examId);
-        this.saveToLocalStorage();
-        this.renderCalendar();
-        this.renderExamList();
-    }
-
     showNotification(message, type = 'info') {
         const notification = document.createElement('div');
         notification.style.cssText = `
             position: fixed;
             top: 20px;
             right: 20px;
-            background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : type === 'warning' ? '#ffc107' : '#4361ee'};
-            color: ${type === 'warning' ? '#333' : 'white'};
+            background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#4361ee'};
+            color: white;
             padding: 16px 24px;
             border-radius: 8px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.2);
@@ -670,7 +759,7 @@ document.head.appendChild(style);
 
 // App initialisieren
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Starte hybride Klassenarbeitsplaner...');
+    console.log('🚀 Starte Firebase Klassenarbeitsplaner mit Tests...');
     window.klassenarbeitsPlaner = new KlassenarbeitsPlaner();
 });
 

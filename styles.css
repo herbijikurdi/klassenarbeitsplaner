@@ -596,3 +596,123 @@ body {
         opacity: 1;
     }
 }
+
+/* Firebase Test-Bereich */
+.firebase-test {
+    background: #f8f9ff;
+    border: 2px solid #e1e5f7;
+    border-radius: 16px;
+    padding: 25px;
+    margin: 30px;
+    margin-top: 0;
+}
+
+.firebase-test h3 {
+    color: #4361ee;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.test-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.btn-test {
+    background: linear-gradient(135deg, #4361ee 0%, #3f37c9 100%);
+    color: white;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.btn-test:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3);
+}
+
+.btn-test:nth-child(2) {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.btn-test:nth-child(2):hover {
+    box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3);
+}
+
+.btn-test:nth-child(3) {
+    background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
+}
+
+.btn-test:nth-child(3):hover {
+    box-shadow: 0 8px 20px rgba(23, 162, 184, 0.3);
+}
+
+.btn-test:nth-child(4) {
+    background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+}
+
+.btn-test:nth-child(4):hover {
+    box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+}
+
+.test-output {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 100px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.test-output p {
+    margin: 0 0 8px 0;
+    color: #666;
+}
+
+.test-output .success {
+    color: #28a745;
+    font-weight: 500;
+}
+
+.test-output .error {
+    color: #dc3545;
+    font-weight: 500;
+}
+
+.test-output .info {
+    color: #17a2b8;
+    font-weight: 500;
+}
+
+.test-output .timestamp {
+    color: #999;
+    font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+    .firebase-test {
+        margin: 20px;
+        margin-top: 0;
+        padding: 20px;
+    }
+    
+    .test-controls {
+        grid-template-columns: 1fr;
+    }
+}

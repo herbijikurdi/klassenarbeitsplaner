@@ -1,79 +1,57 @@
-# Klassenarbeitsplaner mit Firebase
+# Klassenarbeitsplaner (Lokale Version)
 
-Ein moderner, cloudbasierter Klassenarbeitsplaner mit Echtzeit-Synchronisation.
+Ein moderner Klassenarbeitsplaner mit lokaler Datenspeicherung.
 
 ## 🚀 Features
 
-- **☁️ Cloud-Datenbank**: Alle Daten werden in Firebase Firestore gespeichert
-- **🔄 Echtzeit-Sync**: Änderungen werden sofort synchronisiert
+- **💾 Lokale Speicherung**: Alle Daten werden sicher im Browser gespeichert
 - **📱 Responsive Design**: Funktioniert auf allen Geräten
-- **🔒 Sicher**: Jeder Benutzer hat seine eigenen Daten
-- **⚡ Offline-Modus**: Funktioniert auch ohne Internetverbindung
+- **⚡ Schnell & Zuverlässig**: Keine Internetverbindung erforderlich
 - **🎨 Modernes UI**: Schönes, intuitives Design
+- **🔒 Privat**: Daten bleiben auf Ihrem Gerät
 
 ## 📦 Setup
 
 ### Voraussetzungen
-- Ein Firebase-Projekt
-- Firestore aktiviert
-- Hosting (optional für Deployment)
+- Moderner Webbrowser (Chrome, Firefox, Safari, Edge)
+- Keine Internetverbindung erforderlich
 
 ### Installation
 
-1. Klonen Sie das Repository oder laden Sie die Dateien herunter
-2. Ersetzen Sie die Firebase-Konfiguration in `firebase-script.js` mit Ihren Daten
-3. Öffnen Sie `index.html` in einem Webserver
+1. Laden Sie alle Dateien herunter
+2. Öffnen Sie `index.html` direkt im Browser
+3. Fertig! Keine weitere Konfiguration nötig
 
-### Firebase Setup
+### Lokale Speicherung
 
-1. Gehen Sie zur [Firebase Console](https://console.firebase.google.com/)
-2. Erstellen Sie ein neues Projekt oder wählen Sie ein bestehendes
-3. Aktivieren Sie Firestore Database
-4. Kopieren Sie Ihre Konfiguration
-
-### Firestore Regeln
-
-Fügen Sie diese Sicherheitsregeln zu Firestore hinzu:
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Jeder Benutzer kann nur seine eigenen Daten lesen/schreiben
-    match /users/{userId}/exams/{examId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Benutzer-Dokumente
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
-```
+Die App nutzt LocalStorage für die Datenspeicherung:
+- Daten bleiben auch nach Browser-Neustart erhalten
+- Keine externe Datenbank erforderlich
+- Funktioniert komplett offline
+- Pro Browser/Gerät separate Daten
 
 ## 🏗️ Architektur
 
 ### Dateien
 - `index.html` - HTML-Struktur
 - `styles.css` - CSS-Styling
-- `firebase-script.js` - Firebase-Integration und App-Logik
+- `script-local.js` - Lokale App-Logik mit LocalStorage
 
-### Datenstruktur
+### Datenstruktur (LocalStorage)
 
-```
-users/
-  {userId}/
-    exams/
-      {examId}/
-        - subject: string
-        - topic: string
-        - date: string (YYYY-MM-DD)
-        - time: string (HH:MM)
-        - teacher: string
-        - notes: string
-        - createdAt: timestamp
-        - updatedAt: timestamp
+```javascript
+// Gespeichert unter 'klassenarbeiten' im LocalStorage
+[
+  {
+    id: "1633024800000",
+    subject: "Mathematik",
+    topic: "Geometrie", 
+    date: "2025-10-15",
+    time: "10:00",
+    teacher: "Herr Mueller",
+    notes: "Kapitel 5-7 lernen"
+  }
+]
 ```
 
 ## 🔧 Funktionen
@@ -84,45 +62,48 @@ users/
 - 🗑️ Löschen von Klassenarbeiten
 - 📅 Kalenderansicht mit visuellen Indikatoren
 
-### Offline-Unterstützung
-- 💾 Automatisches Backup in LocalStorage
-- 🔄 Synchronisation bei Verbindungswiederherstellung
-- 📶 Verbindungsstatus-Anzeige
+### Lokale Speicherung
+- 💾 Automatische Speicherung im Browser
+- 🔄 Daten bleiben nach Neustart erhalten
+- 📶 Verbindungsstatus-Anzeige (zeigt "Lokal")
+- ⚡ Keine Internetverbindung erforderlich
 
-### Sicherheit
-- 🔐 Anonyme Authentifizierung
-- 👤 Benutzerspezifische Daten
-- 🛡️ Firestore Security Rules
+### Datenschutz
+- 🔐 Alle Daten bleiben auf Ihrem Gerät
+- 👤 Keine Benutzerregistrierung erforderlich
+- 🛡️ Keine Datenübertragung ins Internet
 
 ## 🚀 Deployment
 
-### Firebase Hosting
+### Einfaches Hosting
 
-1. Installieren Sie Firebase CLI:
+Da es sich um eine reine HTML/CSS/JS-App handelt, kann sie überall gehostet werden:
+
+1. **GitHub Pages** (kostenlos)
+2. **Netlify** (kostenlos)
+3. **Vercel** (kostenlos) 
+4. **Eigener Webserver**
+
+### Lokale Nutzung
+
 ```bash
-npm install -g firebase-tools
-```
+# Einfach index.html öffnen oder lokalen Server starten:
 
-2. Initialisieren Sie Firebase:
-```bash
-firebase init hosting
-```
+# Python
+python -m http.server 8000
 
-3. Deployen Sie:
-```bash
-firebase deploy
-```
+# Node.js 
+npx serve
 
-### Alternative Hosting-Optionen
-- Netlify
-- Vercel
-- GitHub Pages (mit GitHub Actions für Firebase-Funktionen)
+# PHP
+php -S localhost:8000
+```
 
 ## 🔍 Entwicklung
 
 ### Lokaler Development Server
 
-Verwenden Sie einen lokalen Webserver:
+Verwenden Sie einen lokalen Webserver (optional):
 ```bash
 # Python
 python -m http.server 8000
@@ -133,11 +114,13 @@ npx serve
 # Live Server (VS Code Extension)
 ```
 
+**Hinweis:** Für die lokale Version ist kein Webserver erforderlich - `index.html` kann direkt geöffnet werden.
+
 ### Debugging
 
 - Browser-Entwicklertools öffnen (F12)
-- Console-Logs für Firebase-Operationen beachten
-- Network-Tab für API-Requests überprüfen
+- Console-Logs für App-Operationen beachten
+- Application-Tab → LocalStorage für gespeicherte Daten
 
 ## 📱 Browser-Unterstützung
 
@@ -161,36 +144,60 @@ npx serve
 
 ## ⚠️ Wichtige Hinweise
 
-1. **Firebase-Limits**: Kostenloser Plan hat Limits (50k Reads/Writes pro Tag)
-2. **Sicherheit**: Firestore Rules richtig konfigurieren
-3. **Performance**: Bei vielen Klassenarbeiten Pagination implementieren
-4. **Backup**: Regelmäßige Datenexporte empfohlen
+1. **Browser-Daten**: Daten sind an den Browser/Gerät gebunden
+2. **Backup**: Browser-Cache/Daten löschen entfernt alle Klassenarbeiten
+3. **Sync**: Keine Synchronisation zwischen verschiedenen Geräten
+4. **Export**: Regelmäßige manuelle Backups empfohlen
 
 ## 🐛 Fehlerbehandlung
 
 ### Häufige Probleme
 
-1. **Firebase nicht verbunden**
-   - Konfiguration überprüfen
-   - Internet-Verbindung testen
-   - Browser-Console auf Fehler prüfen
+1. **Daten sind weg**
+   - Browser-Cache wurde geleert
+   - Privater Modus verwendet
+   - LocalStorage nicht verfügbar
 
-2. **Daten werden nicht gespeichert**
-   - Firestore Rules überprüfen
-   - Authentifizierung prüfen
-   - Quota-Limits überprüfen
+2. **App lädt nicht**
+   - JavaScript deaktiviert
+   - Veralteter Browser
+   - Datei-Pfade überprüfen
 
-3. **Offline-Modus funktioniert nicht**
-   - LocalStorage verfügbar?
-   - Service Worker implementieren (optional)
+3. **Funktionen arbeiten nicht**
+   - Browser-Console auf Fehlermeldungen prüfen
+   - LocalStorage-Quota erreicht (sehr selten)
 
 ## 📞 Support
 
 Bei Problemen:
-1. Browser-Console auf Fehlermeldungen prüfen
-2. Firebase Console auf Logs überprüfen
-3. GitHub Issues erstellen (falls Repository verfügbar)
+1. Browser-Console auf Fehlermeldungen prüfen (F12)
+2. LocalStorage im Browser überprüfen (Application-Tab)
+3. Mit anderem Browser testen
 
-## 📄 Lizenz
+## � **API-Konfiguration**
+
+### Aktuelle Firebase-Konfiguration:
+```javascript
+const firebaseConfig = {
+  apiKey: "AIzaSyCtLOaSFdlMLj5azy5vsYUUpICIo664J0g",
+  authDomain: "klassenarbeitsplaner-674b4.firebaseapp.com", 
+  projectId: "klassenarbeitsplaner-674b4",
+  storageBucket: "klassenarbeitsplaner-674b4.firebasestorage.app",
+  messagingSenderId: "130440095635",
+  appId: "1:130440095635:web:e22374d62553523d97aa66"
+};
+```
+
+### API-Endpunkte:
+- **Firestore Database**: `https://firestore.googleapis.com/v1/projects/klassenarbeitsplaner-674b4/databases/(default)/documents/`
+- **Authentication**: `https://identitytoolkit.googleapis.com/v1/`
+- **Storage**: `https://firebasestorage.googleapis.com/v0/b/klassenarbeitsplaner-674b4.firebasestorage.app/`
+
+### Verwendete Firebase-Services:
+- **Firestore**: Cloud-Datenbank für Klassenarbeiten
+- **Authentication**: Anonyme Benutzerauthentifizierung  
+- **Hosting**: Optionales Web-Hosting
+
+## �📄 Lizenz
 
 MIT License - Frei verwendbar für private und kommerzielle Projekte.

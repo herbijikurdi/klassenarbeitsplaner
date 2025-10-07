@@ -54,6 +54,28 @@
                 <!-- Klassenarbeiten werden hier angezeigt -->
             </div>
         </div>
+
+        <!-- Firebase Test-Bereich -->
+        <div class="firebase-test">
+            <h3><i class="fas fa-database"></i> Firebase Test & Debug</h3>
+            <div class="test-controls">
+                <button class="btn-test" id="testConnection">
+                    <i class="fas fa-plug"></i> Verbindung testen
+                </button>
+                <button class="btn-test" id="testWrite">
+                    <i class="fas fa-plus-circle"></i> Test-Eintrag hinzufügen
+                </button>
+                <button class="btn-test" id="showFirebaseData">
+                    <i class="fas fa-eye"></i> Firebase-Daten anzeigen
+                </button>
+                <button class="btn-test" id="clearTestData">
+                    <i class="fas fa-trash"></i> Test-Daten löschen
+                </button>
+            </div>
+            <div class="test-output" id="testOutput">
+                <p>Firebase-Tests werden hier angezeigt...</p>
+            </div>
+        </div>
     </div>
 
     <!-- Modal für neue Klassenarbeit -->
@@ -103,7 +125,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     
-    <!-- Hybride Version mit Firebase + LocalStorage Fallback -->
-    <script src="script-hybrid.js"></script>
+    <!-- App Script mit Firebase -->
+    <script src="script-firebase-test.js"></script>
 </body>
 </html>
