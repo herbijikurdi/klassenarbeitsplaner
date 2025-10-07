@@ -155,7 +155,7 @@ body {
 .calendar-header {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    background: #e9ecef;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-bottom: 1px solid #dee2e6;
     width: 100%;
 }
@@ -164,12 +164,13 @@ body {
     padding: 15px;
     text-align: center;
     font-weight: 600;
-    color: #495057;
+    color: white;
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     min-width: 0; /* Wichtig für Grid-Elemente */
     word-wrap: break-word;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 .calendar-body {
@@ -244,6 +245,45 @@ body {
     gap: 10px;
 }
 
+.exam-section {
+    margin-bottom: 30px;
+}
+
+.exam-section h4 {
+    margin-bottom: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.archive-section {
+    border-top: 1px solid #e1e5e9;
+    padding-top: 20px;
+}
+
+.archive-section.collapsed .archive-content {
+    display: none;
+}
+
+.archive-section.collapsed .toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.archive-content {
+    display: block;
+}
+
+.exam-item.archived {
+    opacity: 0.7;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+}
+
+.exam-item.archived:hover {
+    opacity: 1;
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+}
+
 .exam-items {
     display: grid;
     gap: 16px;
@@ -256,6 +296,18 @@ body {
     padding: 20px;
     transition: all 0.3s ease;
     cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.exam-item.foreign-entry::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
 }
 
 .exam-item:hover {
@@ -404,6 +456,149 @@ body {
 
 .close-btn:hover {
     background: rgba(255, 255, 255, 0.2);
+}
+
+/* Kalendertag Popup */
+.day-popup {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    z-index: 1001;
+    animation: fadeIn 0.3s ease;
+}
+
+.day-popup-content {
+    background: white;
+    width: 90%;
+    max-width: 450px;
+    margin: 8% auto;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    animation: slideIn 0.3s ease;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.day-popup-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.day-popup-header h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.day-popup-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.day-popup-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+.day-popup-body {
+    padding: 24px;
+}
+
+.day-events {
+    margin-bottom: 24px;
+}
+
+.day-event-item {
+    background: linear-gradient(135deg, #f8f9ff 0%, #e8ecf4 100%);
+    border: 1px solid #e1e5f7;
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 14px;
+    transition: all 0.3s ease;
+}
+
+.day-event-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    border-color: #4361ee;
+}
+
+.day-event-subject {
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: #4361ee;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.day-event-topic {
+    font-size: 1rem;
+    color: #666;
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.day-event-details {
+    font-size: 0.9rem;
+    color: #888;
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.add-event-for-day {
+    width: 100%;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.add-event-for-day:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+}
+
+.no-events-message {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    margin-bottom: 24px;
+    padding: 24px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 2px dashed #dee2e6;
 }
 
 /* Form */
@@ -739,18 +934,18 @@ body {
         flex-direction: column;
         gap: 15px;
         padding: 20px;
-        border-radius: 20px;
-        margin-bottom: 25px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
+        border-radius: 12px;
+        margin-bottom: 20px;
+        background: #f8f9fa;
+        color: #343a40;
+        border-bottom: 2px solid #dee2e6;
     }
 
     .header h1 {
         font-size: 1.8rem;
         text-align: center;
         margin: 0;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        font-weight: 700;
     }
 
     .header-actions {
@@ -769,81 +964,87 @@ body {
     }
 
     .connection-status i {
-        color: white;
+        color: #28a745;
     }
 
     .connection-status span {
-        color: white;
+        color: #000000;
         font-weight: 500;
     }
 
     .add-exam-btn {
         order: 1;
         width: 100%;
-        padding: 18px;
-        font-size: 1.2rem;
-        border-radius: 15px;
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        color: white;
-        border: none;
-        box-shadow: 0 6px 20px rgba(240, 147, 251, 0.4);
+        padding: 12px 24px;
+        font-size: 1rem;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        color: rgb(0, 0, 0);
+        cursor: pointer;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: center;
         transition: all 0.3s ease;
-        font-weight: 600;
+        backdrop-filter: blur(10px);
     }
 
     .add-exam-btn:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(240, 147, 251, 0.5);
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
     }
 
     /* Kalender für Mobile */
     .calendar-controls {
         padding: 20px;
         margin-bottom: 20px;
-        border-radius: 20px;
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        box-shadow: 0 6px 25px rgba(79, 172, 254, 0.3);
+        border-radius: 8px;
+        background: white;
+        border-bottom: 1px solid #e1e5e9;
     }
 
     .current-month {
-        font-size: 1.6rem;
-        color: white;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        font-weight: 700;
+        font-size: 1.5rem;
+        color: #343a40;
+        font-weight: 600;
     }
 
     .nav-btn {
-        width: 55px;
-        height: 55px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.25);
-        border: 2px solid rgba(255,255,255,0.3);
-        color: white;
-        backdrop-filter: blur(15px);
-        transition: all 0.3s ease;
-        font-size: 1.2rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+        background: #f8f9fa;
+        border: 1px solid #ced4da;
+        color: #495057;
+        transition: all 0.2s ease;
+        font-size: 1rem;
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
     .nav-btn:hover {
-        background: rgba(255,255,255,0.35);
-        transform: scale(1.1);
-        box-shadow: 0 4px 15px rgba(255,255,255,0.2);
+        background: #e9ecef;
+        border-color: #adb5bd;
+        color: #212529;
     }
 
     .calendar {
-        border-radius: 25px;
+        border-radius: 6px;
         overflow: hidden;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         margin-bottom: 30px;
-        background: white;
+        background: #fafbfc;
+        border: 1px solid #e1e5e9;
     }
 
     .calendar-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 18px 0;
+        border-bottom: 1px solid #dee2e6;
+        padding: 12px 0;
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         width: 100%;
@@ -852,13 +1053,15 @@ body {
 
     .day-header {
         color: white;
-        font-weight: 700;
-        font-size: 0.85rem;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        padding: 10px 5px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        padding: 8px 3px;
         text-align: center;
         min-width: 0;
         word-wrap: break-word;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 
     .calendar-body {
@@ -869,8 +1072,8 @@ body {
     }
 
     .calendar-day {
-        min-height: 85px;
-        padding: 10px;
+        min-height: 55px;
+        padding: 6px;
         border: none;
         border-bottom: 1px solid #f5f6fa;
         transition: all 0.3s ease;
@@ -880,45 +1083,38 @@ body {
     }
 
     .calendar-day:hover {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        transform: scale(1.03);
-        z-index: 2;
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        border-radius: 15px;
+        background: #f8f9ff;
     }
 
     .calendar-day.today {
-        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-        color: white;
-        font-weight: 700;
-        box-shadow: 0 6px 20px rgba(250, 112, 154, 0.4);
-        border-radius: 15px;
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+        color: #333;
+        font-weight: 600;
     }
 
     .calendar-day.has-exam {
-        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-        border-left: 5px solid #ff6b9d;
+        background: linear-gradient(135deg, #ffecd1 0%, #fcb69f 100%);
     }
 
     .calendar-day-number {
-        font-size: 1.1rem;
+        font-size: 0.85rem;
         font-weight: 600;
-        margin-bottom: 5px;
+        margin-bottom: 2px;
     }
 
     .exam-indicator {
-        background: rgba(255, 107, 157, 0.9);
+        background: #ff6b6b;
         color: white;
-        padding: 4px 8px;
-        border-radius: 10px;
-        font-size: 0.75rem;
-        margin-top: 3px;
-        backdrop-filter: blur(5px);
-        box-shadow: 0 2px 10px rgba(255, 107, 157, 0.3);
+        padding: 1px 3px;
+        border-radius: 3px;
+        font-size: 0.55rem;
         font-weight: 500;
+        margin: 0.5px 0;
         display: block;
-        text-align: center;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        line-height: 1.1;
     }
 
     /* Exam List für Mobile */
@@ -946,14 +1142,14 @@ body {
         position: relative;
     }
 
-    .exam-item::before {
+    .exam-item.foreign-entry::before {
         content: '';
         position: absolute;
         top: 0;
         left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        bottom: 0;
+        width: 4px;
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
     }
 
     .exam-item:hover {
@@ -976,10 +1172,14 @@ body {
     }
 
     .exam-date {
+        background: #667eea;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 12px;
         font-size: 1.1rem;
-        color: #667eea;
         order: 2;
         font-weight: 600;
+        display: inline-block;
     }
 
     .exam-topic {
@@ -1010,23 +1210,23 @@ body {
 
     .btn-edit, .btn-delete {
         flex: 1;
-        padding: 14px;
-        border-radius: 12px;
-        font-size: 1rem;
-        font-weight: 700;
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
         transition: all 0.3s ease;
         border: none;
         cursor: pointer;
     }
 
     .btn-edit {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
         color: white;
     }
 
     .btn-edit:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
     }
 
     .btn-delete {
@@ -1165,21 +1365,22 @@ body {
 
     /* Admin Button für Mobile */
     #adminLoginBtn {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
-        border: none !important;
-        color: white !important;
-        padding: 15px 25px !important;
-        border-radius: 30px !important;
-        font-size: 1rem !important;
-        box-shadow: 0 6px 20px rgba(240, 147, 251, 0.3) !important;
-        transition: all 0.3s ease !important;
-        font-weight: 600 !important;
+        background: rgba(255, 255, 255, 0.2) !important;
+        border: 2px solid rgba(255, 255, 255, 0.3) !important;
+        color: rgb(0, 0, 0) !important;
+        padding: 12px 24px !important;
+        border-radius: 12px !important;
+        font-size: 0.9rem !important;
+        font-weight: 500 !important;
         cursor: pointer !important;
+        transition: all 0.3s ease !important;
+        backdrop-filter: blur(10px) !important;
     }
 
     #adminLoginBtn:hover {
-        transform: translateY(-3px) !important;
-        box-shadow: 0 8px 25px rgba(240, 147, 251, 0.4) !important;
+        background: rgba(255, 255, 255, 0.3) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2) !important;
     }
 
     /* Touch-optimierte Elemente */
@@ -1188,6 +1389,67 @@ body {
         -webkit-touch-callout: none;
         -webkit-user-select: none;
         user-select: none;
+    }
+
+    /* Kalendertag Popup für Mobile */
+    .day-popup-content {
+        width: 95%;
+        max-width: 380px;
+        margin: 5% auto;
+        border-radius: 20px;
+        max-height: 85vh;
+    }
+
+    .day-popup-header {
+        padding: 25px 20px;
+    }
+
+    .day-popup-header h3 {
+        font-size: 1.4rem;
+    }
+
+    .day-popup-close {
+        width: 40px;
+        height: 40px;
+        font-size: 1.3rem;
+    }
+
+    .day-popup-body {
+        padding: 25px;
+    }
+
+    .day-event-item {
+        padding: 18px;
+        margin-bottom: 15px;
+        border-radius: 12px;
+    }
+
+    .day-event-subject {
+        font-size: 1.2rem;
+        margin-bottom: 10px;
+    }
+
+    .day-event-topic {
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
+
+    .day-event-details {
+        font-size: 0.9rem;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .add-event-for-day {
+        padding: 15px 20px;
+        font-size: 1.1rem;
+        border-radius: 12px;
+    }
+
+    .no-events-message {
+        padding: 25px;
+        font-size: 1rem;
+        border-radius: 12px;
     }
 
     /* Smooth scrolling */
@@ -1233,14 +1495,14 @@ body {
     }
 
     .calendar-day {
-        min-height: 75px;
-        font-size: 0.9rem;
-        padding: 6px;
+        min-height: 50px;
+        font-size: 0.8rem;
+        padding: 3px;
     }
 
     .day-header {
-        font-size: 0.7rem;
-        padding: 8px 2px;
+        font-size: 0.6rem;
+        padding: 5px 1px;
         min-width: 40px;
     }
 

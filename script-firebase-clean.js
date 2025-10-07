@@ -178,7 +178,7 @@ class KlassenarbeitsPlaner {
         switch (status) {
             case 'online':
                 statusElement.classList.add('online');
-                textElement.textContent = 'Firebase Online';
+                textElement.textContent = 'Online';
                 break;
             case 'error':
                 statusElement.classList.add('error');
@@ -236,6 +236,38 @@ class KlassenarbeitsPlaner {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 this.closeModal();
+                this.closeDayPopup();
+            }
+        });
+
+        // Day-Popup Events mit Event-Delegation
+        document.getElementById('dayPopupClose').addEventListener('click', () => {
+            this.closeDayPopup();
+        });
+
+        // Event-Delegation für dynamischen addEventForDay Button
+        document.getElementById('dayPopup').addEventListener('click', (e) => {
+            if (e.target.id === 'dayPopup') {
+                // Klick außerhalb des Popups
+                this.closeDayPopup();
+            } else if (e.target.id === 'addEventForDay' || e.target.closest('#addEventForDay')) {
+                // Klick auf "Ereignis hinzufügen" Button
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeDayPopup();
+                setTimeout(() => {
+                    this.openModal(this.selectedDate);
+                }, 50);
+            } else if (e.target.closest('.day-event-item')) {
+                // Klick auf ein Event-Item - scrolle zum entsprechenden Eintrag
+                e.preventDefault();
+                e.stopPropagation();
+                const eventItem = e.target.closest('.day-event-item');
+                const examId = eventItem.dataset.examId;
+                if (examId) {
+                    this.scrollToExamInList(examId);
+                    this.closeDayPopup();
+                }
             }
         });
     }
@@ -362,6 +394,7 @@ class KlassenarbeitsPlaner {
                 examElement.className = 'exam-indicator';
                 examElement.textContent = exam.subject;
                 examElement.title = `${exam.subject}: ${exam.topic}`;
+                examElement.style.pointerEvents = 'none'; // Wichtig: Verhindert Click-Blockierung
                 if (exam.isTest) {
                     examElement.style.background = '#ffc107';
                     examElement.style.color = '#333';
@@ -374,13 +407,30 @@ class KlassenarbeitsPlaner {
                 moreElement.className = 'exam-indicator';
                 moreElement.textContent = `+${dayExams.length - 2} weitere`;
                 moreElement.style.background = '#666';
+                moreElement.style.pointerEvents = 'none'; // Wichtig: Verhindert Click-Blockierung
                 dayElement.appendChild(moreElement);
             }
         }
 
-        dayElement.addEventListener('click', () => {
+        dayElement.addEventListener('click', (e) => {
+            // Verhindere dass Event-Indikatoren das Click-Event blockieren
+            e.stopPropagation();
+            
+            // Debug-Log
+            console.log('Kalendertag geklickt:', this.formatDate(date));
+            
             this.selectedDate = date;
-            this.openModal(date);
+            const dayExams = this.getExamsForDate(date);
+            
+            console.log('Gefundene Exams für diesen Tag:', dayExams.length);
+            
+            if (dayExams.length > 0) {
+                // Scrolle zum ersten Exam des Tages
+                this.scrollToExamInList(dayExams[0].id);
+            } else {
+                // Kein Exam vorhanden - öffne Modal für neuen Eintrag
+                this.openModal(date);
+            }
         });
 
         return dayElement;
@@ -404,19 +454,46 @@ class KlassenarbeitsPlaner {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
+        // Separate upcoming and past exams
         const upcomingExams = sortedExams.filter(exam => {
             const examDate = new Date(exam.date);
             examDate.setHours(0, 0, 0, 0);
             return examDate >= today;
         });
 
+        const pastExams = sortedExams.filter(exam => {
+            const examDate = new Date(exam.date);
+            examDate.setHours(0, 0, 0, 0);
+            return examDate < today;
+        });
+
+        let html = '';
+
+        // Upcoming exams section
         if (upcomingExams.length === 0) {
-            examList.innerHTML = '<p style="text-align: center; color: #888; padding: 20px;">Keine anstehenden Klassenarbeiten.</p>';
-            return;
+            html += '<div class="exam-section"><h4 style="color: #333; margin-bottom: 15px; font-size: 1.1rem;">📅 Anstehende Klassenarbeiten</h4>';
+            html += '<p style="text-align: center; color: #888; padding: 20px;">Keine anstehenden Klassenarbeiten.</p></div>';
+        } else {
+            html += '<div class="exam-section"><h4 style="color: #333; margin-bottom: 15px; font-size: 1.1rem;">📅 Anstehende Klassenarbeiten</h4>';
+            html += upcomingExams.map(exam => this.createExamItemHTML(exam, false)).join('');
+            html += '</div>';
         }
 
-        examList.innerHTML = upcomingExams.map(exam => this.createExamItemHTML(exam)).join('');
+        // Past exams section (archived)
+        if (pastExams.length > 0) {
+            html += '<div class="exam-section archive-section" style="margin-top: 30px;">';
+            html += '<h4 style="color: #666; margin-bottom: 15px; font-size: 1.1rem; cursor: pointer;" onclick="this.parentElement.classList.toggle(\'collapsed\')">';
+            html += '<i class="fas fa-archive" style="margin-right: 8px;"></i>Archiv (' + pastExams.length + ' vergangene Einträge) ';
+            html += '<i class="fas fa-chevron-down toggle-icon" style="float: right; transition: transform 0.3s ease;"></i>';
+            html += '</h4>';
+            html += '<div class="archive-content">';
+            html += pastExams.map(exam => this.createExamItemHTML(exam, true)).join('');
+            html += '</div></div>';
+        }
 
+        examList.innerHTML = html;
+
+        // Bind events for all exam items
         examList.querySelectorAll('.btn-edit').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -434,7 +511,7 @@ class KlassenarbeitsPlaner {
         });
     }
 
-    createExamItemHTML(exam) {
+    createExamItemHTML(exam, isArchived = false) {
         const examDate = new Date(exam.date);
         const formattedDate = examDate.toLocaleDateString('de-DE', {
             weekday: 'short',
@@ -453,6 +530,9 @@ class KlassenarbeitsPlaner {
         const isOwner = exam.ownerId === this.userId;
         const ownerDisplay = ''; // Benutzernamen nicht anzeigen
         const ownerBadge = isOwner ? '<span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px;">MEINE</span>' : '';
+        
+        // Archive badge for past exams
+        const archiveBadge = isArchived ? '<span style="background: #6c757d; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px;">ARCHIV</span>' : '';
         
         // Admin-Badge
         const adminBadge = this.isAdmin ? '<span style="background: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px;">ADMIN</span>' : '';
@@ -477,10 +557,15 @@ class KlassenarbeitsPlaner {
             </div>
         `;
 
+        const itemClass = isArchived ? 'exam-item archived' : 'exam-item';
+        const borderStyle = isArchived ? 'style="border-left: 4px solid #6c757d; opacity: 0.8;"' : 
+                           (exam.isTest ? 'style="border-left: 4px solid #ffc107;"' : 
+                           (isOwner ? 'style="border-left: 4px solid #28a745;"' : 'style="border-left: 4px solid #e9ecef;"'));
+
         return `
-            <div class="exam-item" ${exam.isTest ? 'style="border-left: 4px solid #ffc107;"' : (isOwner ? 'style="border-left: 4px solid #28a745;"' : 'style="border-left: 4px solid #e9ecef;"')}>
+            <div class="${itemClass}" ${borderStyle}>
                 <div class="exam-item-header">
-                    <div class="exam-subject">${exam.subject}${firebaseIcon}${testBadge}${ownerBadge}${adminBadge}</div>
+                    <div class="exam-subject">${exam.subject}${firebaseIcon}${testBadge}${ownerBadge}${archiveBadge}${adminBadge}</div>
                     <div class="exam-date">${formattedDate}${timeDisplay}</div>
                 </div>
                 <div class="exam-topic">${exam.topic}</div>
@@ -518,12 +603,165 @@ class KlassenarbeitsPlaner {
         }, 100);
     }
 
+    closeDayPopup() {
+        const dayPopup = document.getElementById('dayPopup');
+        dayPopup.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        this.selectedDate = null;
+        
+        console.log('Day-Popup geschlossen');
+    }
+
+    openDayPopup(date, exams) {
+        console.log('Öffne Day-Popup für:', this.formatDate(date), 'mit', exams.length, 'Exams');
+        
+        const dayPopup = document.getElementById('dayPopup');
+        const dayPopupTitle = document.getElementById('dayPopupTitle');
+        const dayEvents = document.getElementById('dayEvents');
+        const noEventsMessage = document.getElementById('noEventsMessage');
+        
+        // Format date for title
+        const formattedDate = date.toLocaleDateString('de-DE', {
+            weekday: 'long',
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric'
+        });
+        
+        dayPopupTitle.textContent = formattedDate;
+        
+        if (exams && exams.length > 0) {
+            dayEvents.innerHTML = exams.map(exam => this.createDayEventHTML(exam)).join('');
+            noEventsMessage.style.display = 'none';
+        } else {
+            dayEvents.innerHTML = '';
+            dayEvents.appendChild(noEventsMessage);
+            noEventsMessage.style.display = 'block';
+        }
+        
+        dayPopup.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        this.selectedDate = date;
+        
+        console.log('Day-Popup geöffnet');
+    }
+
+    createDayEventHTML(exam) {
+        const timeDisplay = exam.time ? ` - ${exam.time}` : '';
+        const teacherDisplay = exam.teacher ? `<div><i class="fas fa-user"></i> ${exam.teacher}</div>` : '';
+        const notesDisplay = exam.notes ? `<div style="font-style: italic; color: #666; margin-top: 5px;">"${exam.notes}"</div>` : '';
+        const isOwner = exam.ownerId === this.userId;
+        const ownerBadge = isOwner ? '<span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px;">MEINE</span>' : '';
+        const testBadge = exam.isTest ? '<span style="background: #ffc107; color: #333; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px;">TEST</span>' : '';
+        
+        return `
+            <div class="day-event-item" data-exam-id="${exam.id}" style="cursor: pointer;">
+                <div class="day-event-subject">${exam.subject}${timeDisplay}${ownerBadge}${testBadge}</div>
+                <div class="day-event-topic">${exam.topic}</div>
+                <div class="day-event-details">
+                    ${teacherDisplay}
+                    ${notesDisplay}
+                </div>
+            </div>
+        `;
+    }
+
+    scrollToExamInList(examId) {
+        console.log('Scrolle zu Exam:', examId);
+        
+        // Warte kurz, damit sich das Popup schließen kann
+        setTimeout(() => {
+            // Versuche verschiedene Methoden, das Element zu finden
+            let targetExamItem = null;
+            
+            // Methode 1: Über Button data-exam-id
+            const editBtns = document.querySelectorAll('.btn-edit[data-exam-id="' + examId + '"]');
+            const deleteBtns = document.querySelectorAll('.btn-delete[data-exam-id="' + examId + '"]');
+            
+            if (editBtns.length > 0) {
+                targetExamItem = editBtns[0].closest('.exam-item');
+                console.log('Gefunden über Edit-Button');
+            } else if (deleteBtns.length > 0) {
+                targetExamItem = deleteBtns[0].closest('.exam-item');
+                console.log('Gefunden über Delete-Button');
+            }
+            
+            // Methode 2: Direkte Suche über alle Exam-Items
+            if (!targetExamItem) {
+                const examItems = document.querySelectorAll('.exam-item');
+                console.log('Gefundene Exam-Items:', examItems.length);
+                
+                examItems.forEach((item, index) => {
+                    const editBtn = item.querySelector('.btn-edit');
+                    const deleteBtn = item.querySelector('.btn-delete');
+                    
+                    console.log(`Item ${index}:`, {
+                        editId: editBtn ? editBtn.dataset.examId : 'none',
+                        deleteId: deleteBtn ? deleteBtn.dataset.examId : 'none',
+                        targetId: examId
+                    });
+                    
+                    if ((editBtn && editBtn.dataset.examId === examId) || 
+                        (deleteBtn && deleteBtn.dataset.examId === examId)) {
+                        targetExamItem = item;
+                        console.log('Gefunden über Exam-Item Suche');
+                    }
+                });
+            }
+            
+            if (targetExamItem) {
+                console.log('Target Exam-Item gefunden, führe Scroll aus');
+                
+                // Highlight-Effekt hinzufügen
+                const originalTransition = targetExamItem.style.transition;
+                const originalTransform = targetExamItem.style.transform;
+                const originalBoxShadow = targetExamItem.style.boxShadow;
+                const originalBorderColor = targetExamItem.style.borderColor;
+                
+                targetExamItem.style.transition = 'all 0.5s ease';
+                targetExamItem.style.transform = 'scale(1.02)';
+                targetExamItem.style.boxShadow = '0 12px 40px rgba(67, 97, 238, 0.4)';
+                targetExamItem.style.borderColor = '#4361ee';
+                targetExamItem.style.borderWidth = '3px';
+                
+                // Scrolle sanft zum Element
+                targetExamItem.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                    inline: 'nearest'
+                });
+                
+                // Entferne Highlight nach 3 Sekunden
+                setTimeout(() => {
+                    targetExamItem.style.transition = originalTransition;
+                    targetExamItem.style.transform = originalTransform;
+                    targetExamItem.style.boxShadow = originalBoxShadow;
+                    targetExamItem.style.borderColor = originalBorderColor;
+                    targetExamItem.style.borderWidth = '';
+                }, 3000);
+                
+                console.log('Scroll und Highlight angewendet');
+            } else {
+                console.error('Exam-Item nicht gefunden für ID:', examId);
+                console.log('Verfügbare Exam-IDs in der Liste:');
+                
+                document.querySelectorAll('.exam-item').forEach((item, index) => {
+                    const editBtn = item.querySelector('.btn-edit');
+                    const deleteBtn = item.querySelector('.btn-delete');
+                    console.log(`  ${index}: Edit-ID=${editBtn?.dataset.examId}, Delete-ID=${deleteBtn?.dataset.examId}`);
+                });
+            }
+        }, 100);
+    }
+
     closeModal() {
         const modal = document.getElementById('examModal');
         modal.style.display = 'none';
         document.body.style.overflow = 'auto';
         this.editingExam = null;
         document.getElementById('examForm').reset();
+        
+        console.log('Modal geschlossen');
     }
 
     fillForm(exam) {
@@ -564,19 +802,52 @@ class KlassenarbeitsPlaner {
             if (this.editingExam) {
                 // Bearbeiten
                 await this.updateExamInFirebase(this.editingExam.id, examData);
+                
+                // Aktualisiere die lokale Liste
+                const examIndex = this.exams.findIndex(e => e.id === this.editingExam.id);
+                if (examIndex !== -1) {
+                    // Behalte die ursprüngliche ownerId bei
+                    const originalOwnerId = this.exams[examIndex].ownerId;
+                    this.exams[examIndex] = { 
+                        id: this.editingExam.id, 
+                        ...examData, 
+                        ownerId: originalOwnerId,
+                        updatedAt: new Date().toISOString()
+                    };
+                }
+                
+                // Real-time Listener aktualisiert die Anzeige automatisch
                 console.log(`Klassenarbeit aktualisiert: ${examData.subject} - ${examData.topic}`);
-                this.showNotification('Klassenarbeit in Firebase aktualisiert!', 'success');
+                this.showNotification('Klassenarbeit erfolgreich aktualisiert!', 'success');
             } else {
                 // Neu hinzufügen
                 const docRef = await this.addExamToFirebase(examData);
+                
+                // Nicht zur lokalen Liste hinzufügen - der Real-time Listener macht das automatisch
                 console.log(`Neue Klassenarbeit hinzugefügt: ${examData.subject} - ${examData.topic} (ID: ${docRef.id})`);
-                this.showNotification('Klassenarbeit in Firebase gespeichert!', 'success');
+                this.showNotification('Klassenarbeit erfolgreich gespeichert!', 'success');
             }
             
             this.closeModal();
         } catch (error) {
             console.error(`Fehler beim Speichern: ${error.message}`);
-            this.showNotification('Fehler beim Speichern in Firebase!', 'error');
+            console.error('Vollständiger Fehler:', error);
+            
+            // Bei Update-Fehlern versuche Daten neu zu laden
+            if (this.editingExam && error.message.includes('fehlgeschlagen')) {
+                console.log('Versuche Daten nach Update-Fehler neu zu laden...');
+                try {
+                    await this.loadExamsFromFirebase();
+                    this.renderCalendar();
+                    this.renderExamList();
+                    this.showNotification('Daten wurden aktualisiert. Bitte versuchen Sie erneut.', 'info');
+                } catch (reloadError) {
+                    console.error('Fehler beim Neuladen:', reloadError.message);
+                    this.showNotification(`Fehler beim Speichern: ${error.message}`, 'error');
+                }
+            } else {
+                this.showNotification(`Fehler beim Speichern: ${error.message}`, 'error');
+            }
         }
     }
 
@@ -610,29 +881,93 @@ class KlassenarbeitsPlaner {
     async updateExamInFirebase(examId, examData) {
         if (!this.userId || !this.db) throw new Error('Firebase nicht verfügbar');
         
-        // Admin kann alles bearbeiten, normale Benutzer nur ihre eigenen
-        if (!this.isAdmin) {
-            // Prüfe ob Benutzer der Besitzer ist
+        console.log('Versuche Klassenarbeit zu aktualisieren:', examId);
+        console.log('Admin-Status:', this.isAdmin);
+        console.log('Benutzer-ID:', this.userId);
+        console.log('Zu speichernde Daten:', examData);
+        
+        // Finde die Klassenarbeit in der lokalen Liste für Fallback-Informationen
+        const localExam = this.exams.find(e => e.id === examId);
+        console.log('Lokale Klassenarbeit gefunden:', localExam);
+        
+        try {
+            // Versuche zuerst globale Collection
             const examRef = this.db.collection('exams').doc(examId);
+            console.log('Lade Dokument aus globaler Collection...');
             const examDoc = await examRef.get();
             
-            if (!examDoc.exists) {
-                throw new Error('Klassenarbeit nicht gefunden');
+            if (examDoc.exists) {
+                const currentData = examDoc.data();
+                console.log('Aktuelle Daten in globaler Collection:', currentData);
+                console.log('Besitzer-ID:', currentData.ownerId);
+                
+                // Admin kann alles bearbeiten, normale Benutzer nur ihre eigenen
+                if (!this.isAdmin) {
+                    const examOwner = currentData.ownerId;
+                    if (examOwner !== this.userId) {
+                        throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten bearbeiten');
+                    }
+                }
+                
+                console.log('Berechtigung bestätigt, aktualisiere globale Collection...');
+                const updateData = {
+                    ...examData,
+                    ownerId: currentData.ownerId, // Stelle sicher, dass ownerId erhalten bleibt
+                    updatedAt: new Date().toISOString(),
+                    lastEditedBy: this.isAdmin ? 'Admin' : 'Besitzer'
+                };
+                console.log('Update-Daten:', updateData);
+                
+                await examRef.update(updateData);
+                console.log('Klassenarbeit erfolgreich in globaler Collection aktualisiert:', examId);
+                return; // Erfolgreich, beende die Funktion
             }
-            
-            const examOwner = examDoc.data().ownerId;
-            if (examOwner !== this.userId) {
-                throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten bearbeiten');
-            }
+        } catch (globalError) {
+            console.log('Fehler in globaler Collection:', globalError.message);
         }
         
-        const examRef = this.db.collection('exams').doc(examId);
-        await examRef.update({
-            ...examData,
-            updatedAt: new Date().toISOString(),
-            lastEditedBy: this.isAdmin ? 'Admin' : 'Besitzer'
-        });
-        console.log('Klassenarbeit in Firebase aktualisiert:', examId);
+        // Fallback zu user-spezifischer Collection
+        console.log('Versuche Benutzer-Collection als Fallback...');
+        try {
+            const userExamRef = this.db.collection('users').doc(this.userId).collection('exams').doc(examId);
+            const userExamDoc = await userExamRef.get();
+            
+            if (userExamDoc.exists) {
+                console.log('Gefunden in Benutzer-Collection, aktualisiere...');
+                await userExamRef.update({
+                    ...examData,
+                    updatedAt: new Date().toISOString()
+                });
+                console.log('Klassenarbeit erfolgreich in Benutzer-Collection aktualisiert:', examId);
+                return; // Erfolgreich, beende die Funktion
+            }
+        } catch (userError) {
+            console.error('Fehler auch in Benutzer-Collection:', userError.message);
+        }
+        
+        // Wenn die Klassenarbeit nirgendwo gefunden wurde, erstelle sie neu in der globalen Collection
+        console.log('Klassenarbeit nicht gefunden, erstelle sie neu in globaler Collection...');
+        if (localExam) {
+            try {
+                const newExamData = {
+                    ...examData,
+                    ownerId: localExam.ownerId || this.userId,
+                    createdAt: localExam.createdAt || new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    lastEditedBy: this.isAdmin ? 'Admin' : 'Besitzer'
+                };
+                
+                const examRef = this.db.collection('exams').doc(examId);
+                await examRef.set(newExamData);
+                console.log('Klassenarbeit erfolgreich neu erstellt in globaler Collection:', examId);
+                return;
+            } catch (createError) {
+                console.error('Fehler beim Neuerstellen:', createError.message);
+                throw new Error(`Update fehlgeschlagen: Konnte Klassenarbeit nicht finden oder erstellen - ${createError.message}`);
+            }
+        } else {
+            throw new Error('Update fehlgeschlagen: Klassenarbeit weder in Firebase noch lokal gefunden');
+        }
     }
 
     editExam(examId) {
@@ -644,44 +979,154 @@ class KlassenarbeitsPlaner {
 
     async deleteExam(examId) {
         const exam = this.exams.find(e => e.id === examId);
-        if (!exam) return;
+        if (!exam) {
+            console.log('Klassenarbeit nicht in lokaler Liste gefunden:', examId);
+            this.showNotification('Klassenarbeit nicht gefunden. Lade Daten neu...', 'info');
+            await this.loadExamsFromFirebase();
+            this.renderCalendar();
+            this.renderExamList();
+            return;
+        }
         
         if (!confirm(`Möchten Sie die Klassenarbeit "${exam.subject}: ${exam.topic}" wirklich löschen?`)) {
             return;
         }
 
         try {
+            console.log('Starte Löschvorgang für ID:', examId);
+            
+            // WICHTIG: Erst Firebase löschen, dann lokale Liste
             await this.deleteExamFromFirebase(examId);
-            console.log(`Klassenarbeit gelöscht: ${exam.subject} - ${exam.topic}`);
-            this.showNotification('Klassenarbeit aus Firebase gelöscht!', 'success');
+            console.log('Firebase-Löschung erfolgreich');
+            
+            // Real-time Listener entfernt automatisch aus lokaler Liste und aktualisiert Anzeige
+            console.log(`Klassenarbeit erfolgreich gelöscht: ${exam.subject} - ${exam.topic}`);
+            this.showNotification('Klassenarbeit erfolgreich gelöscht!', 'success');
         } catch (error) {
             console.error(`Fehler beim Löschen: ${error.message}`);
-            this.showNotification('Fehler beim Löschen!', 'error');
+            
+            // Bei Lösch-Fehlern: KEINE lokale Änderung, nur Daten neu laden
+            console.log('Löschung fehlgeschlagen, lade Daten neu...');
+            try {
+                await this.loadExamsFromFirebase();
+                this.renderCalendar();
+                this.renderExamList();
+                this.showNotification(`Löschung fehlgeschlagen: ${error.message}. Daten wurden aktualisiert.`, 'error');
+            } catch (reloadError) {
+                console.error('Fehler beim Neuladen:', reloadError.message);
+                this.showNotification(`Fehler beim Löschen: ${error.message}`, 'error');
+            }
         }
     }
 
     async deleteExamFromFirebase(examId) {
         if (!this.userId || !this.db) throw new Error('Firebase nicht verfügbar');
         
-        // Admin kann alles löschen, normale Benutzer nur ihre eigenen
-        if (!this.isAdmin) {
-            // Prüfe ob Benutzer der Besitzer ist
+        console.log('Versuche Klassenarbeit zu löschen:', examId);
+        console.log('Admin-Status:', this.isAdmin);
+        console.log('Benutzer-ID:', this.userId);
+        
+        // Finde die Klassenarbeit in der lokalen Liste für Fallback-Informationen
+        const localExam = this.exams.find(e => e.id === examId);
+        console.log('Lokale Klassenarbeit gefunden:', localExam);
+        
+        let actuallyDeleted = false;
+        
+        try {
+            // Versuche zuerst globale Collection
             const examRef = this.db.collection('exams').doc(examId);
+            console.log('Lade Dokument aus globaler Collection...');
             const examDoc = await examRef.get();
             
-            if (!examDoc.exists) {
-                throw new Error('Klassenarbeit nicht gefunden');
+            if (examDoc.exists) {
+                const examData = examDoc.data();
+                console.log('Gefundene Klassenarbeit in globaler Collection:', examData);
+                console.log('Besitzer-ID:', examData.ownerId);
+                
+                // Admin kann alles löschen, normale Benutzer nur ihre eigenen
+                if (!this.isAdmin) {
+                    const examOwner = examData.ownerId;
+                    if (examOwner !== this.userId) {
+                        throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten löschen');
+                    }
+                }
+                
+                console.log('Berechtigung bestätigt, lösche aus globaler Collection...');
+                await examRef.delete();
+                console.log('Klassenarbeit erfolgreich aus globaler Collection gelöscht:', examId);
+                
+                // Verifiziere, dass das Dokument wirklich gelöscht wurde
+                const verifyDoc = await examRef.get();
+                if (!verifyDoc.exists) {
+                    console.log('Löschung in globaler Collection verifiziert');
+                    actuallyDeleted = true;
+                } else {
+                    console.error('WARNUNG: Dokument existiert noch nach Löschung!');
+                    throw new Error('Löschung fehlgeschlagen: Dokument existiert noch in globaler Collection');
+                }
             }
-            
-            const examOwner = examDoc.data().ownerId;
-            if (examOwner !== this.userId) {
-                throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten löschen');
+        } catch (globalError) {
+            console.log('Fehler in globaler Collection:', globalError.message);
+            if (globalError.message.includes('Berechtigung') || globalError.message.includes('Löschung fehlgeschlagen')) {
+                throw globalError; // Berechtigungsfehler oder Verifikationsfehler weiterleiten
             }
         }
         
-        const examRef = this.db.collection('exams').doc(examId);
-        await examRef.delete();
-        console.log('Klassenarbeit aus Firebase gelöscht:', examId);
+        if (!actuallyDeleted) {
+            // Fallback zu user-spezifischer Collection
+            console.log('Versuche Benutzer-Collection als Fallback...');
+            try {
+                const userExamRef = this.db.collection('users').doc(this.userId).collection('exams').doc(examId);
+                const userExamDoc = await userExamRef.get();
+                
+                if (userExamDoc.exists) {
+                    console.log('Gefunden in Benutzer-Collection, lösche...');
+                    await userExamRef.delete();
+                    console.log('Klassenarbeit erfolgreich aus Benutzer-Collection gelöscht:', examId);
+                    
+                    // Verifiziere, dass das Dokument wirklich gelöscht wurde
+                    const verifyUserDoc = await userExamRef.get();
+                    if (!verifyUserDoc.exists) {
+                        console.log('Löschung in Benutzer-Collection verifiziert');
+                        actuallyDeleted = true;
+                    } else {
+                        console.error('WARNUNG: Dokument existiert noch nach Löschung in Benutzer-Collection!');
+                        throw new Error('Löschung fehlgeschlagen: Dokument existiert noch in Benutzer-Collection');
+                    }
+                }
+            } catch (userError) {
+                console.error('Fehler auch in Benutzer-Collection:', userError.message);
+                if (userError.message.includes('Löschung fehlgeschlagen')) {
+                    throw userError; // Verifikationsfehler weiterleiten
+                }
+            }
+        }
+        
+        // Finale Prüfung: Wurde wirklich etwas gelöscht?
+        if (!actuallyDeleted) {
+            // Wenn die Klassenarbeit nirgendwo in Firebase gefunden wurde, aber lokal existiert
+            if (localExam) {
+                console.log('Klassenarbeit nicht in Firebase gefunden, aber lokal vorhanden');
+                console.log('Möglicherweise wurde sie bereits gelöscht oder existiert nur lokal');
+                
+                // Prüfe Berechtigung für lokale Löschung
+                if (!this.isAdmin && localExam.ownerId !== this.userId) {
+                    throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten löschen');
+                }
+                
+                console.log('Erlaube lokale Löschung da nicht in Firebase gefunden');
+                // Setze actuallyDeleted auf true für lokale Bereinigung
+                actuallyDeleted = true;
+            } else {
+                throw new Error('Klassenarbeit weder in Firebase noch lokal gefunden');
+            }
+        }
+        
+        if (!actuallyDeleted) {
+            throw new Error('Löschung fehlgeschlagen: Keine Klassenarbeit wurde tatsächlich gelöscht');
+        }
+        
+        console.log('Löschvorgang erfolgreich abgeschlossen');
     }
 
     showNotification(message, type = 'info') {

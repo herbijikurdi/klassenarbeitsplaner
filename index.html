@@ -63,6 +63,31 @@
         </div>
     </div>
 
+    <!-- Kalendertag Popup -->
+    <div class="day-popup" id="dayPopup">
+        <div class="day-popup-content">
+            <div class="day-popup-header">
+                <h3 id="dayPopupTitle">1. Oktober 2025</h3>
+                <button class="day-popup-close" id="dayPopupClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="day-popup-body">
+                <div class="day-events" id="dayEvents">
+                    <!-- Ereignisse werden hier angezeigt -->
+                    <div class="no-events-message" id="noEventsMessage">
+                        <i class="fas fa-calendar-plus" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.5;"></i>
+                        <p>Keine Ereignisse an diesem Tag</p>
+                    </div>
+                </div>
+                <button class="add-event-for-day" id="addEventForDay">
+                    <i class="fas fa-plus"></i>
+                    Ereignis hinzufügen
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal für neue Klassenarbeit -->
     <div class="modal" id="examModal">
         <div class="modal-content">
