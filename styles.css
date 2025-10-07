@@ -691,13 +691,34 @@ body {
 
 .no-events-message {
     text-align: center;
-    color: #666;
+    color: #6c757d;
     font-style: italic;
     margin-bottom: 24px;
-    padding: 24px;
-    background: #f8f9fa;
-    border-radius: 10px;
-    border: 2px dashed #dee2e6;
+    padding: 32px 24px;
+    background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+    border-radius: 16px;
+    border: 2px dashed #d4edda;
+    position: relative;
+    overflow: hidden;
+}
+
+.no-events-message::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(102, 126, 234, 0.02) 0%, rgba(118, 75, 162, 0.02) 100%);
+    pointer-events: none;
+}
+
+.no-events-message i {
+    display: block;
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+    color: #667eea;
+    opacity: 0.6;
 }
 
 /* Form */
@@ -1338,75 +1359,79 @@ body {
         box-shadow: 0 6px 20px rgba(255, 107, 157, 0.4);
     }
 
-    /* Modal für Mobile */
+    /* Modal für Mobile - Schlichter und kompakter */
     .modal-content {
-        width: 95%;
-        max-width: 420px;
-        margin: 25px auto;
-        border-radius: 25px;
+        width: 92%;
+        max-width: 380px;
+        margin: 30px auto;
+        border-radius: 18px;
         overflow: hidden;
-        max-height: 90vh;
+        max-height: 85vh;
         overflow-y: auto;
-        box-shadow: 0 15px 50px rgba(0,0,0,0.2);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        border: 1px solid rgba(255,255,255,0.1);
     }
 
     .modal-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
         color: white;
-        padding: 25px;
+        padding: 20px;
         text-align: center;
         position: relative;
     }
 
     .modal-header h3 {
-        font-size: 1.5rem;
+        font-size: 1.3rem;
         margin: 0;
-        font-weight: 700;
+        font-weight: 600;
+        text-shadow: none;
     }
 
     .close-btn {
-        background: rgba(255,255,255,0.25);
-        border: none;
+        background: rgba(255,255,255,0.15);
+        border: 1px solid rgba(255,255,255,0.2);
         color: white;
-        width: 45px;
-        height: 45px;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
-        font-size: 1.3rem;
+        font-size: 1.1rem;
         transition: all 0.3s ease;
-        backdrop-filter: blur(10px);
+        backdrop-filter: none;
         position: absolute;
-        top: 15px;
-        right: 15px;
+        top: 12px;
+        right: 12px;
     }
 
     .close-btn:hover {
-        background: rgba(255,255,255,0.35);
-        transform: rotate(90deg) scale(1.1);
+        background: rgba(255,255,255,0.25);
+        transform: none;
+        box-shadow: none;
     }
 
     .modal form {
-        padding: 25px;
+        padding: 20px;
+        background: white;
     }
 
     .form-group {
-        margin-bottom: 25px;
+        margin-bottom: 18px;
     }
 
     .form-group label {
-        font-size: 1.1rem;
-        font-weight: 700;
+        font-size: 1rem;
+        font-weight: 600;
         color: #333;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         display: block;
     }
 
     .form-group input,
     .form-group textarea {
         width: 100%;
-        padding: 18px;
-        border: 2px solid #e1e5e9;
-        border-radius: 15px;
-        font-size: 1.1rem;
+        padding: 14px;
+        border: 1px solid #e1e5e9;
+        border-radius: 10px;
+        font-size: 1rem;
         transition: all 0.3s ease;
         background: #f8f9fa;
         font-family: inherit;
@@ -1414,52 +1439,54 @@ body {
 
     .form-group input:focus,
     .form-group textarea:focus {
-        border-color: #667eea;
+        border-color: #6c757d;
         background: white;
-        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-        transform: translateY(-2px);
+        box-shadow: 0 0 0 2px rgba(108, 117, 125, 0.1);
+        transform: none;
         outline: none;
     }
 
     .form-actions {
         flex-direction: column;
-        gap: 15px;
-        padding-top: 25px;
+        gap: 12px;
+        padding-top: 20px;
         margin-top: 0;
     }
 
     .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
         color: white;
         border: none;
-        padding: 18px;
-        border-radius: 15px;
-        font-size: 1.2rem;
-        font-weight: 700;
+        padding: 14px;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: 600;
         transition: all 0.3s ease;
         cursor: pointer;
+        box-shadow: 0 2px 8px rgba(108, 117, 125, 0.2);
     }
 
     .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        transform: none;
+        box-shadow: 0 3px 12px rgba(108, 117, 125, 0.3);
     }
 
     .btn-secondary {
         background: #f8f9fa;
         color: #6c757d;
-        border: 2px solid #e1e5e9;
-        padding: 18px;
-        border-radius: 15px;
-        font-size: 1.2rem;
-        font-weight: 700;
+        border: 1px solid #e1e5e9;
+        padding: 14px;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: 600;
         transition: all 0.3s ease;
         cursor: pointer;
     }
 
     .btn-secondary:hover {
         background: #e9ecef;
-        transform: translateY(-2px);
+        transform: none;
+        border-color: #ced4da;
     }
 
     /* Admin Button für Mobile */
@@ -1508,9 +1535,19 @@ body {
     }
 
     .day-popup-close {
-        width: 40px;
-        height: 40px;
-        font-size: 1.3rem;
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        backdrop-filter: none;
+    }
+
+    /* Schlichtere Hover-Effekte für Mobile */
+    .day-popup-close:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: none;
+        box-shadow: none;
     }
 
     .day-popup-body {
@@ -1518,9 +1555,22 @@ body {
     }
 
     .day-event-item {
-        padding: 18px;
-        margin-bottom: 15px;
-        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        border-radius: 10px;
+        border: 1px solid #e8f2ff;
+        background: white;
+    }
+
+    /* Schlichtere Touch-Effekte für Mobile */
+    .day-event-item:hover {
+        transform: none;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        border-color: #cce7ff;
+    }
+
+    .day-event-item::before {
+        display: none; /* Kein Gradient-Overlay auf Mobile */
     }
 
     .day-event-subject {
@@ -1540,9 +1590,23 @@ body {
     }
 
     .add-event-for-day {
-        padding: 15px 20px;
-        font-size: 1.1rem;
-        border-radius: 12px;
+        padding: 12px 18px;
+        font-size: 1rem;
+        font-weight: 500;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        box-shadow: 0 2px 8px rgba(108, 117, 125, 0.15);
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* Entferne komplexe Hover-Effekte auf Mobile */
+    .add-event-for-day:hover {
+        transform: none;
+        box-shadow: 0 3px 12px rgba(108, 117, 125, 0.2);
+    }
+
+    .add-event-for-day::before {
+        display: none; /* Kein Shimmer-Effekt auf Mobile */
     }
 
     .no-events-message {
@@ -1633,5 +1697,49 @@ body {
     .calendar-header,
     .calendar-body {
         min-width: 350px;
+    }
+}
+
+/* Moderne Popup-Animationen */
+@keyframes slideInScale {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.9);
+    }
+    50% {
+        opacity: 0.8;
+        transform: translateY(-10px) scale(1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes fadeIn {
+    from { 
+        opacity: 0; 
+        backdrop-filter: blur(0px);
+    }
+    to { 
+        opacity: 1; 
+        backdrop-filter: blur(10px);
+    }
+}
+
+/* Verbesserte Event-Item-Animationen */
+@keyframes eventItemHover {
+    0% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-2px) scale(1.01); }
+    100% { transform: translateY(-4px) scale(1.02); }
+}
+
+/* Glühender Effekt für wichtige Buttons */
+@keyframes glow {
+    0%, 100% { 
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2); 
+    }
+    50% { 
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4); 
     }
 }
