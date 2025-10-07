@@ -1,5 +1,5 @@
-// Firebase Klassenarbeitsplaner mit Test-Funktionen
-// Alle Daten werden in Firebase gespeichert mit ausführlichen Tests
+// Firebase Klassenarbeitsplaner - Funktionierende Version
+// Alle Daten werden in Firebase gespeichert mit Test-Funktionen
 
 const firebaseConfig = {
   apiKey: "AIzaSyCtLOaSFdlMLj5azy5vsYUUpICIo664J0g",
@@ -22,7 +22,7 @@ class KlassenarbeitsPlaner {
         this.unsubscribeExams = null;
         this.testOutput = null;
         
-        console.log('🚀 Firebase Klassenarbeitsplaner mit Tests gestartet');
+        console.log('🚀 Firebase Klassenarbeitsplaner gestartet');
         this.init();
     }
 
@@ -80,54 +80,32 @@ class KlassenarbeitsPlaner {
 
     async authenticateUser() {
         return new Promise((resolve, reject) => {
-            // Fallback: Lokale User-ID generieren wenn Firebase Auth fehlschlägt
-            const generateLocalUserId = () => {
-                const localUserId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                this.userId = localUserId;
-                localStorage.setItem('klassenarbeitsplaner_userId', localUserId);
-                this.logTest(`🔑 Lokale Benutzer-ID erstellt: ${localUserId.substring(0, 15)}...`, 'info');
-                resolve();
-            };
-
-            // Prüfe ob bereits eine lokale User-ID existiert
-            const existingUserId = localStorage.getItem('klassenarbeitsplaner_userId');
-            if (existingUserId) {
-                this.userId = existingUserId;
-                this.logTest(`🔄 Bestehende Benutzer-ID geladen: ${existingUserId.substring(0, 15)}...`, 'info');
-                resolve();
-                return;
-            }
-
-            // Versuche Firebase Authentication
             const unsubscribe = this.auth.onAuthStateChanged(async (user) => {
                 try {
                     if (user) {
                         this.userId = user.uid;
-                        this.logTest(`👤 Firebase-Benutzer angemeldet: ${this.userId.substring(0, 8)}...`, 'success');
+                        this.logTest(`👤 Benutzer angemeldet: ${this.userId.substring(0, 8)}...`, 'success');
                         unsubscribe();
                         resolve();
                     } else {
-                        this.logTest('🔐 Versuche anonyme Firebase-Anmeldung...', 'info');
+                        this.logTest('🔐 Starte anonyme Anmeldung...', 'info');
                         const userCredential = await this.auth.signInAnonymously();
                         this.userId = userCredential.user.uid;
-                        this.logTest(`✅ Firebase anonyme Anmeldung erfolgreich: ${this.userId.substring(0, 8)}...`, 'success');
+                        this.logTest(`✅ Anonyme Anmeldung erfolgreich: ${this.userId.substring(0, 8)}...`, 'success');
                         unsubscribe();
                         resolve();
                     }
                 } catch (error) {
-                    this.logTest(`⚠️ Firebase Auth fehlgeschlagen: ${error.message}`, 'warning');
-                    this.logTest('🔄 Wechsle zu lokaler Benutzer-ID...', 'info');
+                    this.logTest(`❌ Authentifizierung fehlgeschlagen: ${error.message}`, 'error');
                     unsubscribe();
-                    generateLocalUserId();
+                    reject(error);
                 }
             });
 
-            // Timeout für Firebase Auth
             setTimeout(() => {
                 unsubscribe();
-                this.logTest('⏱️ Firebase Auth Timeout - verwende lokale ID', 'warning');
-                generateLocalUserId();
-            }, 5000);
+                reject(new Error('Authentifizierung timeout'));
+            }, 10000);
         });
     }
 
@@ -135,8 +113,24 @@ class KlassenarbeitsPlaner {
         if (!this.userId || !this.db) return;
 
         try {
-            const examsRef = this.db.collection('users').doc(this.userId).collection('exams');
-            const query = examsRef.orderBy('date', 'asc');
+            // Versuche zuerst globale Collection, dann fallback zu user-spezifisch
+            let examsRef, query;
+            
+            try {
+                // Versuche globale Collection
+                examsRef = this.db.collection('exams');
+                query = examsRef.orderBy('date', 'asc');
+                
+                // Test-Abfrage um Berechtigungen zu prüfen
+                const testSnapshot = await query.limit(1).get();
+                this.logTest('✅ Globale Collection verfügbar', 'success');
+                
+            } catch (globalError) {
+                this.logTest('⚠️ Globale Collection nicht verfügbar, verwende Benutzer-Collection', 'warning');
+                // Fallback zu user-spezifischer Collection
+                examsRef = this.db.collection('users').doc(this.userId).collection('exams');
+                query = examsRef.orderBy('date', 'asc');
+            }
 
             // Einmalige Ladung
             const snapshot = await query.get();
@@ -198,47 +192,33 @@ class KlassenarbeitsPlaner {
         this.logTest('🧪 Teste Firebase-Verbindung...', 'info');
         
         try {
-            // Teste Firestore-Zugriff direkt (ohne Auth)
+            // Teste Authentifizierung
+            const user = this.auth.currentUser;
+            if (!user) {
+                throw new Error('Nicht authentifiziert');
+            }
+            this.logTest(`✅ Authentifizierung OK: ${user.uid.substring(0, 8)}...`, 'success');
+
+            // Teste Firestore-Zugriff
             const testDoc = await this.db.collection('test').doc('connection').get();
-            this.logTest('✅ Firestore-Zugriff OK (ohne Auth)', 'success');
+            this.logTest('✅ Firestore-Zugriff OK', 'success');
 
-            // Teste ob User-ID verfügbar ist
-            if (!this.userId) {
-                this.logTest('⚠️ Keine Benutzer-ID verfügbar', 'warning');
-                return;
-            }
-            this.logTest(`✅ Benutzer-ID verfügbar: ${this.userId.substring(0, 15)}...`, 'success');
+            // Teste Schreibberechtigung
+            await this.db.collection('test').doc('write-test').set({
+                timestamp: new Date().toISOString(),
+                test: true,
+                ownerId: this.userId
+            });
+            this.logTest('✅ Schreibberechtigung OK', 'success');
 
-            // Teste Firestore mit User-ID
-            const userDocRef = this.db.collection('users').doc(this.userId);
-            await userDocRef.set({ lastAccess: new Date().toISOString() }, { merge: true });
-            this.logTest('✅ Firestore Schreibzugriff OK', 'success');
+            // Lösche Test-Dokument
+            await this.db.collection('test').doc('write-test').delete();
+            this.logTest('✅ Löschberechtigung OK', 'success');
 
-            // Teste Lesezugriff
-            const userDoc = await userDocRef.get();
-            if (userDoc.exists) {
-                this.logTest('✅ Firestore Lesezugriff OK', 'success');
-            }
-
-            // Teste Authentifizierung wenn verfügbar
-            if (this.auth && this.auth.currentUser) {
-                const user = this.auth.currentUser;
-                this.logTest(`✅ Firebase Auth aktiv: ${user.uid.substring(0, 8)}...`, 'success');
-            } else {
-                this.logTest('ℹ️ Firebase Auth nicht aktiv (lokale Benutzer-ID wird verwendet)', 'info');
-            }
-
-            this.logTest('🎉 Firebase-Verbindung erfolgreich getestet!', 'success');
+            this.logTest('🎉 Alle Firebase-Tests erfolgreich!', 'success');
 
         } catch (error) {
             this.logTest(`❌ Verbindungstest fehlgeschlagen: ${error.message}`, 'error');
-            
-            // Detaillierte Fehleranalyse
-            if (error.code === 'permission-denied') {
-                this.logTest('💡 Tipp: Firestore-Sicherheitsregeln prüfen', 'info');
-            } else if (error.code === 'unavailable') {
-                this.logTest('💡 Tipp: Internetverbindung prüfen', 'info');
-            }
         }
     }
 
@@ -257,7 +237,13 @@ class KlassenarbeitsPlaner {
                 isTest: true
             };
 
-            const docRef = await this.db.collection('users').doc(this.userId).collection('exams').add(testExam);
+            const testExamWithOwner = {
+                ...testExam,
+                ownerId: this.userId,
+                ownerName: `Benutzer ${this.userId.substring(0, 8)}...`
+            };
+            
+            const docRef = await this.db.collection('exams').add(testExamWithOwner);
             this.logTest(`✅ Test-Klassenarbeit erstellt! ID: ${docRef.id}`, 'success');
             this.logTest(`📝 Daten: ${JSON.stringify(testExam, null, 2)}`, 'info');
 
@@ -270,7 +256,7 @@ class KlassenarbeitsPlaner {
         this.logTest('📊 Lade alle Firebase-Daten...', 'info');
         
         try {
-            const snapshot = await this.db.collection('users').doc(this.userId).collection('exams').get();
+            const snapshot = await this.db.collection('exams').get();
             
             if (snapshot.empty) {
                 this.logTest('📭 Keine Daten in Firebase gefunden', 'info');
@@ -296,8 +282,9 @@ class KlassenarbeitsPlaner {
         this.logTest('🗑️ Lösche alle Test-Einträge...', 'info');
         
         try {
-            const snapshot = await this.db.collection('users').doc(this.userId).collection('exams')
-                .where('isTest', '==', true).get();
+            const snapshot = await this.db.collection('exams')
+                .where('isTest', '==', true)
+                .where('ownerId', '==', this.userId).get();
             
             if (snapshot.empty) {
                 this.logTest('📭 Keine Test-Einträge gefunden', 'info');
@@ -573,26 +560,43 @@ class KlassenarbeitsPlaner {
         const notesDisplay = exam.notes ? `<div style="margin-top: 8px; font-style: italic; color: #666;">"${exam.notes}"</div>` : '';
         const firebaseIcon = '<i class="fas fa-cloud" style="color: #4285f4; margin-left: 8px;" title="In Firebase gespeichert"></i>';
         const testBadge = exam.isTest ? '<span style="background: #ffc107; color: #333; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px;">TEST</span>' : '';
+        
+        // Besitzer-Info und Berechtigungen
+        const isOwner = exam.ownerId === this.userId;
+        const ownerDisplay = exam.ownerName ? `<span style="color: #666; font-size: 0.8rem;"><i class="fas fa-user-circle"></i> von ${exam.ownerName}</span>` : '';
+        const ownerBadge = isOwner ? '<span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px;">MEINE</span>' : '';
+        
+        // Aktions-Buttons nur für eigene Einträge
+        const actionsHTML = isOwner ? `
+            <div class="exam-actions">
+                <button class="btn-edit" data-exam-id="${exam.id}">
+                    <i class="fas fa-edit"></i> Bearbeiten
+                </button>
+                <button class="btn-delete" data-exam-id="${exam.id}">
+                    <i class="fas fa-trash"></i> Löschen
+                </button>
+            </div>
+        ` : `
+            <div class="exam-actions">
+                <span style="color: #999; font-style: italic; font-size: 0.9rem;">
+                    <i class="fas fa-lock"></i> Nur ${exam.ownerName || 'Besitzer'} kann bearbeiten
+                </span>
+            </div>
+        `;
 
         return `
-            <div class="exam-item" ${exam.isTest ? 'style="border-left: 4px solid #ffc107;"' : ''}>
+            <div class="exam-item" ${exam.isTest ? 'style="border-left: 4px solid #ffc107;"' : (isOwner ? 'style="border-left: 4px solid #28a745;"' : 'style="border-left: 4px solid #e9ecef;"')}>
                 <div class="exam-item-header">
-                    <div class="exam-subject">${exam.subject}${firebaseIcon}${testBadge}</div>
+                    <div class="exam-subject">${exam.subject}${firebaseIcon}${testBadge}${ownerBadge}</div>
                     <div class="exam-date">${formattedDate}${timeDisplay}</div>
                 </div>
                 <div class="exam-topic">${exam.topic}</div>
                 <div class="exam-details">
                     ${teacherDisplay}
+                    ${ownerDisplay}
                 </div>
                 ${notesDisplay}
-                <div class="exam-actions">
-                    <button class="btn-edit" data-exam-id="${exam.id}">
-                        <i class="fas fa-edit"></i> Bearbeiten
-                    </button>
-                    <button class="btn-delete" data-exam-id="${exam.id}">
-                        <i class="fas fa-trash"></i> Löschen
-                    </button>
-                </div>
+                ${actionsHTML}
             </div>
         `;
     }
@@ -686,16 +690,46 @@ class KlassenarbeitsPlaner {
     async addExamToFirebase(examData) {
         if (!this.userId || !this.db) throw new Error('Firebase nicht verfügbar');
         
-        const examsRef = this.db.collection('users').doc(this.userId).collection('exams');
-        const docRef = await examsRef.add(examData);
-        console.log('Klassenarbeit zu Firebase hinzugefügt:', docRef.id);
-        return docRef;
+        try {
+            // Versuche zuerst globale Collection
+            const examWithOwner = {
+                ...examData,
+                ownerId: this.userId,
+                ownerName: `Benutzer ${this.userId.substring(0, 8)}...`
+            };
+            
+            const examsRef = this.db.collection('exams');
+            const docRef = await examsRef.add(examWithOwner);
+            console.log('Klassenarbeit zu globaler Firebase Collection hinzugefügt:', docRef.id);
+            return docRef;
+            
+        } catch (globalError) {
+            this.logTest('⚠️ Globale Collection nicht verfügbar, verwende Benutzer-Collection', 'warning');
+            
+            // Fallback zu user-spezifischer Collection
+            const examsRef = this.db.collection('users').doc(this.userId).collection('exams');
+            const docRef = await examsRef.add(examData);
+            console.log('Klassenarbeit zu Benutzer-Collection hinzugefügt:', docRef.id);
+            return docRef;
+        }
     }
 
     async updateExamInFirebase(examId, examData) {
         if (!this.userId || !this.db) throw new Error('Firebase nicht verfügbar');
         
-        const examRef = this.db.collection('users').doc(this.userId).collection('exams').doc(examId);
+        // Prüfe ob Benutzer der Besitzer ist
+        const examRef = this.db.collection('exams').doc(examId);
+        const examDoc = await examRef.get();
+        
+        if (!examDoc.exists) {
+            throw new Error('Klassenarbeit nicht gefunden');
+        }
+        
+        const examOwner = examDoc.data().ownerId;
+        if (examOwner !== this.userId) {
+            throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten bearbeiten');
+        }
+        
         await examRef.update({
             ...examData,
             updatedAt: new Date().toISOString()
@@ -731,7 +765,19 @@ class KlassenarbeitsPlaner {
     async deleteExamFromFirebase(examId) {
         if (!this.userId || !this.db) throw new Error('Firebase nicht verfügbar');
         
-        const examRef = this.db.collection('users').doc(this.userId).collection('exams').doc(examId);
+        // Prüfe ob Benutzer der Besitzer ist
+        const examRef = this.db.collection('exams').doc(examId);
+        const examDoc = await examRef.get();
+        
+        if (!examDoc.exists) {
+            throw new Error('Klassenarbeit nicht gefunden');
+        }
+        
+        const examOwner = examDoc.data().ownerId;
+        if (examOwner !== this.userId) {
+            throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten löschen');
+        }
+        
         await examRef.delete();
         console.log('Klassenarbeit aus Firebase gelöscht:', examId);
     }
@@ -796,7 +842,7 @@ document.head.appendChild(style);
 
 // App initialisieren
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Starte Firebase Klassenarbeitsplaner mit Tests...');
+    console.log('🚀 Starte Firebase Klassenarbeitsplaner...');
     window.klassenarbeitsPlaner = new KlassenarbeitsPlaner();
 });
 
