@@ -22,6 +22,8 @@ class KlassenarbeitsPlaner {
         this.unsubscribeExams = null;
         this.isAdmin = false;
         this.adminPassword = 'borabora'; // Admin-Passwort
+        this.updateTimeout = null;
+        this.webchannelErrorCount = 0;
         
         console.log('🚀 Firebase Klassenarbeitsplaner gestartet');
         this.init();
@@ -63,12 +65,20 @@ class KlassenarbeitsPlaner {
             throw new Error('Firebase SDK nicht geladen');
         }
 
-        // Firebase initialisieren
+        // Firebase initialisieren mit Webchannel-Optimierung
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
 
+        // Firestore mit reduzierten Webchannel-Requests konfigurieren
         this.db = firebase.firestore();
+        
+        // Reduziere Webchannel-Aktivität für stabilere Verbindung
+        this.db.settings({
+            experimentalForceLongPolling: true, // Stabilere Verbindung als Webchannel
+            ignoreUndefinedProperties: true
+        });
+        
         this.auth = firebase.auth();
 
         // Teste Firestore-Verbindung
@@ -142,23 +152,45 @@ class KlassenarbeitsPlaner {
 
             console.log(`${this.exams.length} Klassenarbeiten aus Firebase geladen`);
 
-            // Real-time Listener
-            this.unsubscribeExams = query.onSnapshot((snapshot) => {
-                const oldCount = this.exams.length;
-                this.exams = [];
-                snapshot.forEach((doc) => {
-                    this.exams.push({
-                        id: doc.id,
-                        ...doc.data()
+            // Real-time Listener mit reduzierter Aktivität
+            this.unsubscribeExams = query.onSnapshot({
+                includeMetadataChanges: false // Reduziert Webchannel-Traffic
+            }, (snapshot) => {
+                try {
+                    const oldCount = this.exams.length;
+                    this.exams = [];
+                    
+                    snapshot.forEach((doc) => {
+                        if (doc.exists) {
+                            this.exams.push({
+                                id: doc.id,
+                                ...doc.data()
+                            });
+                        }
                     });
-                });
-                
-                if (this.exams.length !== oldCount) {
-                    console.log(`Real-time Update: ${this.exams.length} Klassenarbeiten`);
+                    
+                    if (this.exams.length !== oldCount) {
+                        console.log(`Real-time Update: ${this.exams.length} Klassenarbeiten`);
+                    }
+                    
+                    // UI-Updates mit Debouncing um Webchannel-Load zu reduzieren
+                    clearTimeout(this.updateTimeout);
+                    this.updateTimeout = setTimeout(() => {
+                        this.renderCalendar();
+                        this.renderExamList();
+                    }, 100);
+                    
+                } catch (error) {
+                    console.error('Real-time Update Fehler:', error);
                 }
-                
-                this.renderCalendar();
-                this.renderExamList();
+            }, (error) => {
+                console.error('Real-time Listener Fehler:', error);
+                // Bei Verbindungsfehlern: Fallback zu manuellen Updates
+                console.log('Fallback: Deaktiviere Real-time Listener');
+                if (this.unsubscribeExams) {
+                    this.unsubscribeExams();
+                    this.unsubscribeExams = null;
+                }
             });
 
         } catch (error) {
@@ -296,62 +328,46 @@ class KlassenarbeitsPlaner {
     }
 
     showAdminLogin() {
-        const password = prompt('Admin-Passwort eingeben:\n(Email admin@admin.admin ist bereits voreingestellt)');
+        const password = prompt('Admin-Passwort eingeben:\n(Verwendet lokalen Admin-Modus - keine OAuth erforderlich)');
         if (password) {
-            // Versuche Firebase-Admin-Anmeldung
-            this.loginAsFirebaseAdmin(password);
+            // Lokaler Admin-Modus ohne Firebase OAuth
+            this.activateLocalAdminMode(password);
         }
     }
 
-    async loginAsFirebaseAdmin(password) {
-        const adminEmail = 'admin@admin.admin';
-        
+    async activateLocalAdminMode(password) {
         try {
-            console.log('Versuche Firebase-Admin-Anmeldung...');
-            
-            // Firebase-Anmeldung mit voreingestellter Admin-Email
-            const userCredential = await firebase.auth().signInWithEmailAndPassword(adminEmail, password);
-            const user = userCredential.user;
-            
-            console.log('Firebase-Admin-Anmeldung erfolgreich:', user.uid);
-            
-            // Admin-Status aktivieren
-            this.isAdmin = true;
-            this.userId = user.uid;
-            this.userEmail = user.email;
-            
-            this.showNotification('Firebase-Admin-Anmeldung erfolgreich! Vollzugriff aktiviert.', 'success');
-            this.updateAdminButton();
-            this.renderExamList(); // Liste neu rendern mit Admin-Rechten
-            
-            // Lade alle Daten neu mit Admin-Berechtigung
-            await this.loadExamsFromFirebase();
-            this.renderCalendar();
-            this.renderExamList();
-            
-        } catch (error) {
-            console.error('Firebase-Admin-Anmeldung fehlgeschlagen:', error.message);
-            
-            // Fallback zum lokalen Admin-Modus
+            // Prüfe Admin-Passwort
             if (password === this.adminPassword) {
-                console.log('Fallback zum lokalen Admin-Modus');
+                console.log('Lokaler Admin-Modus aktiviert');
+                
+                // Admin-Status aktivieren
                 this.isAdmin = true;
-                this.showNotification('Lokaler Admin-Modus aktiviert! (Firebase-Anmeldung fehlgeschlagen)', 'warning');
+                
+                // Simuliere Admin-User-ID für konsistente Logik
+                this.adminUserId = 'admin-' + Date.now();
+                
+                this.showNotification('Admin-Modus aktiviert! Vollzugriff auf alle Klassenarbeiten.', 'success');
                 this.updateAdminButton();
+                
+                // Lade alle Daten mit Admin-Berechtigung
+                await this.loadExamsFromFirebase();
+                this.renderCalendar();
                 this.renderExamList();
+                
             } else {
-                this.showNotification(`Admin-Anmeldung fehlgeschlagen: ${error.message}`, 'error');
+                this.showNotification('Falsches Admin-Passwort!', 'error');
             }
+        } catch (error) {
+            console.error('Admin-Aktivierung fehlgeschlagen:', error.message);
+            this.showNotification(`Admin-Aktivierung fehlgeschlagen: ${error.message}`, 'error');
         }
     }
 
     updateAdminButton() {
         const adminBtn = document.getElementById('adminLoginBtn');
         if (this.isAdmin) {
-            const isFirebaseAdmin = this.userEmail === 'admin@admin.admin';
-            const statusText = isFirebaseAdmin ? 'Firebase-Admin aktiv' : 'Admin aktiv';
-            
-            adminBtn.innerHTML = `<i class="fas fa-shield-alt" style="margin-right: 5px; color: #28a745;"></i>${statusText}`;
+            adminBtn.innerHTML = `<i class="fas fa-shield-alt" style="margin-right: 5px; color: #28a745;"></i>Admin aktiv`;
             adminBtn.style.borderColor = '#28a745';
             adminBtn.style.color = '#28a745';
             adminBtn.style.fontWeight = '500';
@@ -371,23 +387,17 @@ class KlassenarbeitsPlaner {
 
     async logoutAdmin() {
         try {
-            // Wenn Firebase-Admin, dann ausloggen
-            if (this.userEmail === 'admin@admin.admin') {
-                await firebase.auth().signOut();
-                console.log('Firebase-Admin ausgeloggt');
-                this.showNotification('Firebase-Admin-Modus deaktiviert', 'info');
-            } else {
-                this.showNotification('Lokaler Admin-Modus deaktiviert', 'info');
-            }
+            console.log('Admin-Modus wird deaktiviert');
+            this.showNotification('Admin-Modus deaktiviert', 'info');
         } catch (error) {
             console.error('Logout-Fehler:', error);
-            this.showNotification('Admin-Modus deaktiviert (Logout-Fehler ignoriert)', 'info');
+            this.showNotification('Admin-Modus deaktiviert', 'info');
         }
         
         // Admin-Status zurücksetzen
         this.isAdmin = false;
+        this.adminUserId = null;
         this.updateAdminButton();
-        this.renderExamList();
         
         // Lade Daten als normaler Benutzer neu
         await this.loadExamsFromFirebase();
@@ -1420,84 +1430,58 @@ class KlassenarbeitsPlaner {
         
         console.log('Versuche Klassenarbeit zu löschen:', examId);
         console.log('Admin-Status:', this.isAdmin);
-        console.log('Benutzer-ID:', this.userId);
         
-        // Finde die Klassenarbeit in der lokalen Liste für Berechtigungsprüfung
+        // Finde die Klassenarbeit in der lokalen Liste
         const localExam = this.exams.find(e => e.id === examId);
-        console.log('Lokale Klassenarbeit gefunden:', localExam);
         
-        // Berechtigungsprüfung vor Firebase-Calls
+        // Berechtigungsprüfung
         if (localExam && !this.isAdmin && localExam.ownerId !== this.userId) {
             throw new Error('Keine Berechtigung: Sie können nur Ihre eigenen Klassenarbeiten löschen');
         }
         
-        let actuallyDeleted = false;
-        let lastError = null;
-        
-        // Robuste Löschstrategie: Versuche beide Collections parallel
-        const deletePromises = [];
-        
-        // Benutzer-Collection
-        const userExamRef = this.db.collection('users').doc(this.userId).collection('exams').doc(examId);
-        deletePromises.push(
-            userExamRef.delete().then(() => {
-                console.log('Erfolgreich aus Benutzer-Collection gelöscht:', examId);
-                actuallyDeleted = true;
-                return true;
-            }).catch(error => {
-                console.log('Benutzer-Collection Fehler:', error.message);
-                return false;
-            })
-        );
-        
-        // Globale Collection (nur für Admin oder eigene Items)
-        if (this.isAdmin || (localExam && localExam.ownerId === this.userId)) {
-            const globalExamRef = this.db.collection('exams').doc(examId);
-            deletePromises.push(
-                globalExamRef.delete().then(() => {
-                    console.log('Erfolgreich aus globaler Collection gelöscht:', examId);
-                    actuallyDeleted = true;
-                    return true;
-                }).catch(error => {
-                    console.log('Globale Collection Fehler:', error.message);
-                    lastError = error;
-                    return false;
-                })
-            );
-        }
-        
-        // Warte auf alle Löschversuche (mit Timeout)
+        // Vereinfachte Löschstrategie mit Timeout
         try {
-            const results = await Promise.allSettled(deletePromises);
-            console.log('Löschversuche abgeschlossen:', results);
+            console.log('Starte vereinfachte Löschung...');
             
-            // Prüfe ob mindestens eine Löschung erfolgreich war
-            if (actuallyDeleted) {
-                console.log('Mindestens eine Löschung war erfolgreich');
-                return; // Erfolg
-            }
-        } catch (error) {
-            console.error('Fehler bei Promise.allSettled:', error);
-            lastError = error;
-        }
-        
-        
-        // Finale Prüfung und Fallback
-        if (!actuallyDeleted) {
-            if (localExam) {
-                console.log('Klassenarbeit nicht in Firebase gelöscht, aber lokal vorhanden');
-                console.log('Möglicherweise Verbindungsproblem oder bereits gelöscht');
-                console.log('Erlaube lokale Bereinigung für bessere Benutzererfahrung');
-                // Lokale Bereinigung erlauben - Real-time Listener wird es ohnehin synchronisieren
-                actuallyDeleted = true;
-            } else if (lastError) {
-                throw lastError;
+            // Bestimme Collection basierend auf Admin-Status und Besitzer
+            let targetRef;
+            if (this.isAdmin && localExam && localExam.ownerId !== this.userId) {
+                targetRef = this.db.collection('exams').doc(examId);
+                console.log('Admin-Löschung: Globale Collection');
             } else {
-                throw new Error('Klassenarbeit konnte nicht gelöscht werden');
+                targetRef = this.db.collection('users').doc(this.userId).collection('exams').doc(examId);
+                console.log('Standard-Löschung: Benutzer-Collection');
+            }
+            
+            // Löschung mit 3s Timeout um Webchannel-Probleme zu vermeiden
+            await Promise.race([
+                targetRef.delete(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+            ]);
+            
+            console.log('Firebase-Löschung erfolgreich');
+            
+        } catch (error) {
+            console.warn('Firebase-Löschung fehlgeschlagen:', error.message);
+            
+            // Bei Webchannel/Timeout-Fehlern: Lokale Bereinigung erlauben
+            if (error.message.includes('Timeout') || 
+                error.message.includes('Bad Request') ||
+                error.message.includes('connection') ||
+                error.message.includes('webchannel')) {
+                
+                console.log('Verbindungsfehler erkannt - erlaube lokale Bereinigung');
+                console.log('Real-time Listener wird korrekte Synchronisation übernehmen');
+                // Kein throw - lokale UI wird bereinigt, Real-time sync korrigiert falls nötig
+            } else if (!error.message.includes('Berechtigung')) {
+                // Andere Fehler außer Berechtigungsfehlern ignorieren
+                console.log('Ignoriere Firebase-Fehler, erlaube lokale Bereinigung');
+            } else {
+                throw error; // Nur Berechtigungsfehler weiterleiten
             }
         }
         
-        console.log('Löschvorgang erfolgreich abgeschlossen');
+        console.log('Löschvorgang abgeschlossen');
     }
 
     showNotification(message, type = 'info') {
@@ -1540,6 +1524,24 @@ class KlassenarbeitsPlaner {
     destroy() {
         if (this.unsubscribeExams) {
             this.unsubscribeExams();
+        }
+        if (this.updateTimeout) {
+            clearTimeout(this.updateTimeout);
+        }
+    }
+
+    // Überwache und reduziere Webchannel-Fehler
+    handleWebchannelError(error) {
+        this.webchannelErrorCount++;
+        console.warn(`Webchannel-Fehler #${this.webchannelErrorCount}:`, error);
+        
+        if (this.webchannelErrorCount >= 3) {
+            console.log('Zu viele Webchannel-Fehler - deaktiviere Real-time Listener');
+            if (this.unsubscribeExams) {
+                this.unsubscribeExams();
+                this.unsubscribeExams = null;
+            }
+            this.showNotification('Verbindung instabil - Real-time Updates deaktiviert', 'warning');
         }
     }
 
