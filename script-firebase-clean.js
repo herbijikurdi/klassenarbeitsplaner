@@ -730,7 +730,7 @@ class KlassenarbeitsPlaner {
         ` : `
             <div class="exam-actions">
                 <span style="color: #999; font-style: italic; font-size: 0.9rem;">
-                    <i class="fas fa-lock"></i> Nur Besitzer kann bearbeiten
+                    <i class="fas fa-lock"></i> .
                 </span>
             </div>
         `;
