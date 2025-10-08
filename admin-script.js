@@ -781,7 +781,7 @@ class AdminDashboard {
 
             adminList.innerHTML = emails.map(email => {
                 const isMainAdmin = email === 'admin@admin.admin';
-                const canRemove = this.currentUser?.uid === 'P9jxWaBbC9ckFwJiVEx61G4THwV2' && !isMainAdmin;
+                const canManage = this.currentUser?.uid === 'P9jxWaBbC9ckFwJiVEx61G4THwV2' && !isMainAdmin;
 
                 return `<li>
                     <div class="admin-info">
@@ -789,20 +789,18 @@ class AdminDashboard {
                         <span class="admin-email">${email}</span>
                         ${isMainAdmin ? '<span class="admin-badge-small">Hauptadmin</span>' : ''}
                     </div>
-                    ${canRemove ? `<button class="admin-remove-btn" data-email="${email}" title="Admin entfernen">
-                        <i class="fas fa-trash"></i> Entfernen
+                    ${canManage ? `<button class="admin-manage-btn" data-email="${email}" title="Admin verwalten">
+                        <i class="fas fa-cog"></i>
                     </button>` : ''}
                 </li>`;
             }).join('');
 
-            // Event-Handler für Entfernen-Buttons
-            adminList.querySelectorAll('.admin-remove-btn').forEach(btn => {
+            // Event-Handler für Verwaltungs-Buttons
+            adminList.querySelectorAll('.admin-manage-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     e.preventDefault();
                     const email = btn.dataset.email;
-                    if (confirm(`Möchten Sie den Admin "${email}" wirklich entfernen?`)) {
-                        await this.removeAdminUser(email);
-                    }
+                    this.manageAdminUser(email);
                 });
             });
 
@@ -870,6 +868,17 @@ class AdminDashboard {
                 // Da wir die UID nicht haben, lassen wir es
             } catch (deleteErr) {
                 console.error('Fehler beim Aufräumen:', deleteErr);
+            }
+        }
+    }
+
+    async manageAdminUser(email) {
+        // Einfaches Verwaltungs-Menü mit Bestätigung
+        const action = confirm(`Admin "${email}" verwalten:\n\nDrücken Sie OK um den Admin zu entfernen, oder Abbrechen um abzubrechen.`);
+        
+        if (action) {
+            if (confirm(`Sind Sie sicher, dass Sie den Admin "${email}" entfernen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`)) {
+                await this.removeAdminUser(email);
             }
         }
     }

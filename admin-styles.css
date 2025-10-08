@@ -1193,17 +1193,19 @@ body {
   box-shadow: 0 2px 8px rgba(102,126,234,0.08);
   padding: 24px;
   margin: 0 auto;
-  max-width: 600px;
   text-align: left;
   display: block;
 }
 .firestore-panel.hidden {
   display: none;
 }
-#firestoreStatus {
-  font-size: 1.05rem;
+.firestore-panel h2 {
+  font-size: 1.2rem;
   color: #764ba2;
-  margin-bottom: 12px;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 #firestoreLogs {
   background: #fafbfc;
@@ -1246,9 +1248,6 @@ body {
   box-shadow: 0 2px 8px rgba(102,126,234,0.08);
   padding: 24px;
   margin: 32px 0;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .admin-management-panel.hidden {
@@ -1257,10 +1256,34 @@ body {
 .admin-management-panel h2 {
   font-size: 1.2rem;
   color: #764ba2;
-  margin-bottom: 16px;
+  margin: 0 0 8px 0;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.panel-header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e1e5e9;
+}
+
+.panel-description {
+  margin: 4px 0 0 0;
+  color: #666;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.admin-list-section {
+  margin-top: 16px;
+}
+
+.admin-list-section h3 {
+  margin: 0 0 12px 0;
+  color: #333;
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .evil-mode .admin-management-panel {
@@ -1272,6 +1295,14 @@ body {
 .evil-mode .admin-management-panel h2 {
   color: #ff3333;
 }
+
+.evil-mode .panel-header {
+  border-bottom: 1px solid #ff3333;
+}
+
+.evil-mode .panel-description {
+  color: #cc0000;
+}
 .add-admin-form {
   display: flex;
   gap: 12px;
@@ -1279,21 +1310,23 @@ body {
   flex-wrap: wrap;
 }
 .add-admin-form input {
-  flex: 1 1 180px;
-  padding: 8px 12px;
-  border-radius: 6px;
+  flex: 1 1 90px;
+  padding: 4px 8px;
+  border-radius: 3px;
   border: 1px solid #e1e5e9;
-  font-size: 1rem;
+  font-size: 0.8rem;
+  min-height: 32px;
 }
 .add-admin-form button {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
   border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 1rem;
+  border-radius: 3px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
   cursor: pointer;
   transition: background 0.2s;
+  min-height: 32px;
 }
 .add-admin-form button:hover {
   background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
@@ -1303,6 +1336,10 @@ body {
   border: 2px solid #ff3333;
   background: #1a1a1a;
   color: #ff3333;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  min-height: 32px;
+  flex: 1 1 90px;
 }
 
 .evil-mode .add-admin-form button {
@@ -1311,6 +1348,9 @@ body {
   box-shadow: 0 0 10px #ff3333;
   text-transform: uppercase;
   letter-spacing: 1px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  min-height: 32px;
 }
 
 .evil-mode .add-admin-form button:hover {
@@ -1326,6 +1366,7 @@ body {
   font-size: 1rem;
   color: #333;
   display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 8px;
 }
@@ -1340,35 +1381,39 @@ body {
 .evil-mode .admin-list .fa-user-shield {
   color: #ff3333;
 }
-.admin-list .admin-remove-btn {
-    background: #dc3545;
+.admin-list .admin-manage-btn {
+    background: #007bff;
     color: #fff;
     border: none;
     border-radius: 6px;
-    padding: 4px 10px;
+    padding: 6px;
     font-size: 1rem;
     cursor: pointer;
-    margin-left: 12px;
     transition: background 0.2s;
     font-weight: bold;
     text-transform: none;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.admin-list .admin-remove-btn:hover {
-    background: #c82333;
+.admin-list .admin-manage-btn:hover {
+    background: #0056b3;
 }
 
-.evil-mode .admin-list .admin-remove-btn {
-    background: linear-gradient(90deg, #660000 0%, #ff3333 100%);
-    border: 2px solid #ff3333;
-    box-shadow: 0 0 8px #ff3333;
+.evil-mode .admin-list .admin-manage-btn {
+    background: linear-gradient(90deg, #3333ff 0%, #6666ff 100%);
+    border: 2px solid #6666ff;
+    box-shadow: 0 0 8px #6666ff;
     text-transform: uppercase;
 }
 
-.evil-mode .admin-list .admin-remove-btn:hover {
-    background: #ff3333;
-    color: #660000;
-    box-shadow: 0 0 16px #ff3333;
+.evil-mode .admin-list .admin-manage-btn:hover {
+    background: #6666ff;
+    color: #000033;
+    box-shadow: 0 0 16px #6666ff;
 }
 
 /* Enhanced Admin List Styles */
@@ -1600,8 +1645,9 @@ body {
 
     .add-admin-form input {
         width: 100%;
-        min-height: 44px;
-        font-size: 1rem;
+        min-height: 38px;
+        font-size: 0.9rem;
+        padding: 6px 10px;
     }
 
     .admin-list li {
@@ -1625,13 +1671,14 @@ body {
         padding: 2px 6px;
     }
 
-    .admin-list .admin-remove-btn {
+    .admin-list .admin-manage-btn {
         align-self: flex-end;
         margin-left: 0;
         margin-top: 4px;
-        padding: 6px 12px;
+        width: 50px;
+        height: 50px;
+        padding: 4px;
         font-size: 0.9rem;
-        min-height: 36px;
     }
 }
 
@@ -1664,9 +1711,9 @@ body {
     }
 
     .logout-btn {
-        padding: 8px 16px;
-        font-size: 0.9rem;
-        min-height: 40px;
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        min-height: 36px;
     }
 
     .stats-container {
@@ -1901,10 +1948,11 @@ body {
         padding: 1px 5px;
     }
 
-    .admin-list .admin-remove-btn {
-        padding: 5px 10px;
+    .admin-list .admin-manage-btn {
+        padding: 3px;
         font-size: 0.85rem;
-        min-height: 34px;
+        width: 45px;
+        height: 45px;
         align-self: flex-end;
         margin-left: 0;
         margin-top: 4px;
@@ -1936,9 +1984,9 @@ body {
     }
 
     .logout-btn {
-        padding: 6px 12px;
-        font-size: 0.85rem;
-        min-height: 38px;
+        padding: 5px 10px;
+        font-size: 0.75rem;
+        min-height: 34px;
     }
 
     .stats-container {
@@ -2147,18 +2195,16 @@ body {
     .admin-list li {
         padding: 8px 0;
         font-size: 0.85rem;
-    }
-
-    .admin-list li {
-        padding: 10px 0;
-        font-size: 0.9rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
     }
 
     .admin-list .admin-remove-btn {
-        padding: 5px 10px;
-        font-size: 0.85rem;
-        min-height: 34px;
-        margin-left: 6px;
+        padding: 3px 6px;
+        font-size: 0.75rem;
+        min-height: 28px;
     }
 }
 
@@ -2173,6 +2219,20 @@ body {
     .admin-management-panel h2 {
         font-size: 1rem;
         margin-bottom: 14px;
+    }
+
+    .panel-header {
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+    }
+
+    .panel-description {
+        font-size: 0.8rem;
+    }
+
+    .admin-list-section h3 {
+        font-size: 0.9rem;
+        margin-bottom: 10px;
     }
 
     .add-admin-form {
@@ -2204,13 +2264,14 @@ body {
         gap: 8px;
     }
 
-    .admin-list .admin-remove-btn {
+    .admin-list .admin-manage-btn {
         align-self: flex-end;
         margin-left: 0;
         margin-top: 4px;
-        padding: 6px 12px;
+        width: 50px;
+        height: 50px;
+        padding: 4px;
         font-size: 0.9rem;
-        min-height: 36px;
     }
 }
 
@@ -2226,34 +2287,52 @@ body {
         margin-bottom: 12px;
     }
 
+    .panel-header {
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+    }
+
+    .panel-description {
+        font-size: 0.75rem;
+    }
+
+    .admin-list-section h3 {
+        font-size: 0.85rem;
+        margin-bottom: 8px;
+    }
+
     .add-admin-form {
         gap: 8px;
         margin-bottom: 14px;
     }
 
     .add-admin-form input {
-        padding: 9px 11px;
-        font-size: 0.9rem;
-        min-height: 40px;
-        border-radius: 5px;
+        padding: 5px 7px;
+        font-size: 0.8rem;
+        min-height: 32px;
+        flex: 1 1 50px;
     }
 
     .add-admin-form button {
-        padding: 9px 14px;
-        font-size: 0.9rem;
-        min-height: 40px;
-        border-radius: 5px;
+        padding: 7px 12px;
+        font-size: 0.85rem;
+        min-height: 36px;
     }
 
     .admin-list li {
         padding: 10px 0;
         font-size: 0.9rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
     }
 
-    .admin-list .admin-remove-btn {
-        padding: 5px 10px;
-        font-size: 0.85rem;
-        min-height: 34px;
+    .admin-list .admin-manage-btn {
+        padding: 2px;
+        font-size: 0.8rem;
+        width: 40px;
+        height: 40px;
     }
 }
 
@@ -2269,34 +2348,53 @@ body {
         margin-bottom: 10px;
     }
 
+    .panel-header {
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+    }
+
+    .panel-description {
+        font-size: 0.7rem;
+    }
+
+    .admin-list-section h3 {
+        font-size: 0.8rem;
+        margin-bottom: 6px;
+    }
+
     .add-admin-form {
         gap: 6px;
         margin-bottom: 12px;
     }
 
     .add-admin-form input {
-        padding: 8px 10px;
-        font-size: 0.85rem;
-        min-height: 38px;
-        border-radius: 4px;
+        padding: 4px 6px;
+        font-size: 0.75rem;
+        min-height: 30px;
+        border-radius: 3px;
+        flex: 1 1 40px;
     }
 
     .add-admin-form button {
-        padding: 8px 12px;
-        font-size: 0.85rem;
-        min-height: 38px;
-        border-radius: 4px;
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        min-height: 34px;
+        border-radius: 3px;
     }
 
     .admin-list li {
         padding: 8px 0;
         font-size: 0.85rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
     }
 
     .admin-list .admin-remove-btn {
-        padding: 4px 8px;
-        font-size: 0.8rem;
-        min-height: 32px;
+        padding: 3px 6px;
+        font-size: 0.75rem;
+        min-height: 28px;
     }
 }
 
@@ -2589,7 +2687,7 @@ body {
         border: 1px solid #ff3333;
     }
 
-    .evil-mode .admin-list .admin-remove-btn {
+    .evil-mode .admin-list .admin-manage-btn {
         box-shadow: 0 0 6px #ff3333;
         border: 1px solid #ff3333;
     }
@@ -2624,7 +2722,7 @@ body {
     .evil-mode .logout-btn {
         padding: 6px 12px;
         font-size: 0.8rem;
-        box-shadow: 0 0 4px #ff3333;
+        min-height: 36px;
     }
 
     .evil-mode .stat-card {
@@ -2685,25 +2783,28 @@ body {
 
     .evil-mode .add-admin-form input {
         border: 1px solid #ff3333;
-        padding: 9px 11px;
-        font-size: 0.9rem;
+        padding: 5px 7px;
+        font-size: 0.8rem;
+        flex: 1 1 50px;
     }
 
     .evil-mode .add-admin-form button {
         box-shadow: 0 0 4px #ff3333;
         border: 1px solid #ff3333;
-        padding: 9px 14px;
-        font-size: 0.9rem;
+        padding: 7px 12px;
+        font-size: 0.85rem;
     }
 
     .evil-mode .admin-list li {
         font-size: 0.85rem;
     }
 
-    .evil-mode .admin-list .admin-remove-btn {
+    .evil-mode .admin-list .admin-manage-btn {
         box-shadow: 0 0 4px #ff3333;
         border: 1px solid #ff3333;
-        padding: 4px 8px;
+        width: 45px;
+        height: 45px;
+        padding: 3px;
         font-size: 0.8rem;
     }
 }
@@ -2737,7 +2838,7 @@ body {
     .evil-mode .logout-btn {
         padding: 5px 10px;
         font-size: 0.75rem;
-        box-shadow: 0 0 3px #ff3333;
+        min-height: 34px;
     }
 
     .evil-mode .stat-card {
@@ -2800,25 +2901,28 @@ body {
 
     .evil-mode .add-admin-form input {
         border: 1px solid #ff3333;
-        padding: 8px 10px;
-        font-size: 0.85rem;
+        padding: 4px 6px;
+        font-size: 0.75rem;
+        flex: 1 1 40px;
     }
 
     .evil-mode .add-admin-form button {
         box-shadow: 0 0 3px #ff3333;
         border: 1px solid #ff3333;
-        padding: 8px 12px;
-        font-size: 0.85rem;
+        padding: 6px 10px;
+        font-size: 0.8rem;
     }
 
     .evil-mode .admin-list li {
         font-size: 0.8rem;
     }
 
-    .evil-mode .admin-list .admin-remove-btn {
+    .evil-mode .admin-list .admin-manage-btn {
         box-shadow: 0 0 3px #ff3333;
         border: 1px solid #ff3333;
-        padding: 3px 6px;
+        width: 30px;
+        height: 30px;
+        padding: 2px;
         font-size: 0.75rem;
     }
 }
