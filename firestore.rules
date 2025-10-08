@@ -3,9 +3,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Admin-Benutzer hat vollen Zugriff auf alle Daten
+    // Alle Admins aus der Liste
     function isAdmin() {
-      return request.auth != null && request.auth.token.email == 'admin@admin.admin';
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/admin/admins) &&
+        request.auth.token.email in get(/databases/$(database)/documents/admin/admins).data.emails;
+    }
+
+    // Nur Hauptadmin (anhand UID)
+    function isMainAdmin() {
+      return request.auth != null && request.auth.uid == 'P9jxWaBbC9ckFwJiVEx61G4THwV2';
     }
     
     // Normale Benutzer-Authentifizierung
@@ -49,7 +56,16 @@ service cloud.firestore {
       }
     }
     
-    // Admin-spezifische Collections (nur für Admin zugänglich)
+    // Admin-Liste: Alle authentifizierten Nutzer können lesen, nur Hauptadmin kann schreiben
+    match /admin/admins {
+      allow read: if request.auth != null;
+      allow write, delete: if isMainAdmin();
+    }
+
+    // Andere Admin-Dokumente: Alle Admins dürfen alles
+    match /admin/{document=**} {
+      allow read, write, delete: if isAdmin();
+    }
     match /admin/{document=**} {
       allow read, write, delete: if isAdmin();
     }

@@ -30,7 +30,7 @@
             <form id="adminLoginForm" class="login-form">
                 <div class="form-group">
                     <label for="adminEmail">Admin-Email:</label>
-                    <input type="email" id="adminEmail" value="admin@admin.admin" readonly>
+                    <input type="email" id="adminEmail" value="admin@admin.admin">
                     <i class="fas fa-lock input-icon"></i>
                 </div>
                 
@@ -145,6 +145,36 @@
                     <!-- Exam items will be populated here -->
                 </div>
             </div>
+
+            <!-- Admin-Management (nur Hauptadmin) -->
+            <div id="adminManagementPanel" class="admin-management-panel hidden">
+                <h2><i class="fas fa-user-shield"></i> Admin-Benutzer verwalten</h2>
+                <form id="addAdminForm" class="add-admin-form">
+                    <input type="email" id="newAdminEmail" placeholder="Neue Admin-E-Mail" required>
+                    <input type="password" id="newAdminPassword" placeholder="Passwort" required>
+                    <button type="submit"><i class="fas fa-user-plus"></i> Admin erstellen</button>
+                </form>
+                <ul id="adminList" class="admin-list"></ul>
+            </div>
+        </div>
+
+        <!-- Firestore-Überprüfung & Logs (aufklappbar) -->
+        <div class="admin-bottom-panel">
+            <button id="toggleFirestorePanel" class="toggle-panel-btn" title="Panel aufklappen/zuklappen">
+                <i class="fas fa-chevron-up"></i>
+            </button>
+            <div id="firestorePanel" class="firestore-panel hidden">
+                <h3><i class="fas fa-database"></i> Firestore-Überprüfung</h3>
+                <div id="firestoreStatus">Status: ...</div>
+                <div class="firestore-test-btns">
+                    <button id="firestoreReadTest" class="fs-test-btn"><i class="fas fa-search"></i> Lesen-Test</button>
+                    <button id="firestoreWriteTest" class="fs-test-btn"><i class="fas fa-pen"></i> Schreiben-Test</button>
+                    <button id="firestoreDeleteTest" class="fs-test-btn"><i class="fas fa-trash"></i> Löschen-Test</button>
+                    <button id="firestoreRuleTest" class="fs-test-btn"><i class="fas fa-shield-alt"></i> Regel-Test</button>
+                </div>
+                <h3 style="margin-top:24px;"><i class="fas fa-clipboard-list"></i> Logs</h3>
+                <div id="firestoreLogs">Logs werden geladen...</div>
+            </div>
         </div>
     </div>
 
@@ -164,8 +194,8 @@
                         <input type="text" id="subject" name="subject" required>
                     </div>
                     <div class="form-group">
-                        <label for="topic">Thema *</label>
-                        <input type="text" id="topic" name="topic" required>
+                        <label for="topic">Thema</label>
+                        <input type="text" id="topic" name="topic">
                     </div>
                     <div class="form-group">
                         <label for="date">Datum *</label>

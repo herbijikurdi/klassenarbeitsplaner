@@ -702,7 +702,6 @@ class KlassenarbeitsPlaner {
         const timeDisplay = exam.time ? ` um ${exam.time}` : '';
         const teacherDisplay = exam.teacher ? `<span><i class="fas fa-user"></i> ${exam.teacher}</span>` : '';
         const notesDisplay = exam.notes ? `<div style="margin-top: 8px; font-style: italic; color: #666;">"${exam.notes}"</div>` : '';
-        const firebaseIcon = '<i class="fas fa-cloud" style="color: #4285f4; margin-left: 8px;" title="In Firebase gespeichert"></i>';
         const testBadge = exam.isTest ? '<span style="background: #ffc107; color: #333; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px;">TEST</span>' : '';
         
         // Besitzer-Info und Berechtigungen
@@ -744,7 +743,7 @@ class KlassenarbeitsPlaner {
         return `
             <div class="${itemClass}" data-exam-id="${exam.id}" ${borderStyle.replace('style="', 'style="cursor: pointer; ')}>
                 <div class="exam-item-header">
-                    <div class="exam-subject">${exam.subject}${firebaseIcon}${testBadge}${ownerBadge}${archiveBadge}${adminBadge}</div>
+                    <div class="exam-subject">${exam.subject}${testBadge}${ownerBadge}${archiveBadge}${adminBadge}</div>
                     <div class="exam-date">${formattedDate}${timeDisplay}</div>
                 </div>
                 <div class="exam-topic">${exam.topic}</div>

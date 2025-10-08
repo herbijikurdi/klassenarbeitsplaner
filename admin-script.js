@@ -29,11 +29,21 @@ class AdminDashboard {
             this.bindEvents();
             
             // Prüfe ob bereits angemeldet
-            this.auth.onAuthStateChanged((user) => {
-                if (user && user.email === 'admin@admin.admin') {
-                    console.log('Admin bereits angemeldet:', user.email);
-                    this.currentUser = user;
-                    this.showDashboard();
+            this.auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    // Prüfe, ob die E-Mail in der Admin-Liste steht
+                    const docRef = this.db.collection('admin').doc('admins');
+                    const snapshot = await docRef.get();
+                    const emails = snapshot.exists ? snapshot.data().emails || [] : [];
+                    if (emails.includes(user.email)) {
+                        console.log('Admin angemeldet:', user.email);
+                        this.currentUser = user;
+                        this.showDashboard();
+                    } else {
+                        console.log('Nicht autorisiert für Admin-Bereich');
+                        this.showNotification('Nicht autorisiert für Admin-Bereich', 'error');
+                        this.showLogin();
+                    }
                 } else {
                     console.log('Kein Admin angemeldet');
                     this.showLogin();
@@ -63,7 +73,7 @@ class AdminDashboard {
         this.db.settings({
             experimentalForceLongPolling: true,
             ignoreUndefinedProperties: true
-        });
+        }, {merge: true});
     }
 
     showLogin() {
@@ -73,12 +83,58 @@ class AdminDashboard {
     }
 
     async showDashboard() {
+        // Evil Mode für Hauptadmin aktivieren
+        if (this.currentUser?.uid === 'P9jxWaBbC9ckFwJiVEx61G4THwV2') {
+            document.body.classList.add('evil-mode');
+            document.body.classList.remove('school-mode');
+            // Fade-out Animation für Login-Screen
+            document.getElementById('loginScreen').classList.add('fade-out');
+            // Warte kurz für die Animation
+            await new Promise(resolve => setTimeout(resolve, 800));
+        } else {
+            // School Mode für normale Admins
+            document.body.classList.add('school-mode');
+            document.body.classList.remove('evil-mode');
+        }
+        
+        console.log('Dashboard anzeigen für User:', this.currentUser?.email, 'UID:', this.currentUser?.uid);
+        
         document.getElementById('loadingScreen').style.display = 'none';
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('adminDashboard').classList.remove('hidden');
         
-        // Lade Dashboard-Daten
+        // Zeige eingeloggten User an
+        this.updateUserInfo();
+        
         await this.loadDashboardData();
+        
+        // UI-Anpassungen basierend auf Admin-Typ
+        const isMainAdmin = this.currentUser?.uid === 'P9jxWaBbC9ckFwJiVEx61G4THwV2';
+        
+        // Statistiken nur für Hauptadmin anzeigen
+        const statsContainer = document.querySelector('.stats-container');
+        if (statsContainer) {
+            statsContainer.style.display = isMainAdmin ? 'grid' : 'none';
+        }
+        
+        // "Neue Klassenarbeit hinzufügen" Button für alle Admins anzeigen
+        const addExamBtn = document.getElementById('addExamBtn');
+        if (addExamBtn) {
+            addExamBtn.style.display = 'inline-flex';
+        }
+        
+        // Admin-Management-Menü nur für Hauptadmin (anhand UID)
+        if (isMainAdmin) {
+            document.getElementById('adminManagementPanel').classList.remove('hidden');
+            await this.loadAdminUsers();
+        } else {
+            document.getElementById('adminManagementPanel').classList.add('hidden');
+            // Firestore-Panel auch für normale Admins ausblenden
+            const bottomPanel = document.querySelector('.admin-bottom-panel');
+            if (bottomPanel) {
+                bottomPanel.style.display = 'none';
+            }
+        }
     }
 
     bindEvents() {
@@ -147,10 +203,25 @@ class AdminDashboard {
                 this.closeExamModal();
             }
         });
+        // Admin-Benutzer hinzufügen (nur Hauptadmin)
+        const addAdminForm = document.getElementById('addAdminForm');
+        if (addAdminForm) {
+            addAdminForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (this.currentUser?.uid !== 'P9jxWaBbC9ckFwJiVEx61G4THwV2') return;
+                const email = document.getElementById('newAdminEmail').value.trim().toLowerCase();
+                const password = document.getElementById('newAdminPassword').value;
+                if (!email || !password) return this.showNotification('Bitte E-Mail und Passwort eingeben', 'error');
+                await this.createAdminUser(email, password);
+            });
+        }
     }
 
     async handleLogin() {
-        const email = document.getElementById('adminEmail').value;
+        let email = document.getElementById('adminEmail').value.trim();
+        if (!email) {
+            email = 'admin@admin.admin';
+        }
         const password = document.getElementById('adminPassword').value;
 
         if (!password) {
@@ -161,7 +232,6 @@ class AdminDashboard {
         try {
             console.log('Versuche Admin-Anmeldung...');
             
-            // Versuche zuerst normale Anmeldung
             let userCredential;
             try {
                 userCredential = await this.auth.signInWithEmailAndPassword(email, password);
@@ -169,7 +239,6 @@ class AdminDashboard {
             } catch (loginError) {
                 console.log('Login-Fehler:', loginError.code);
                 
-                // Falls Account nicht existiert, erstelle ihn
                 if (loginError.code === 'auth/user-not-found') {
                     console.log('Admin-Account nicht gefunden, erstelle neuen Account...');
                     try {
@@ -187,7 +256,11 @@ class AdminDashboard {
             
             const user = userCredential.user;
             
-            if (user.email === 'admin@admin.admin') {
+            // Prüfe, ob die E-Mail in der Admin-Liste steht oder Hauptadmin ist
+            const docRef = this.db.collection('admin').doc('admins');
+            const snapshot = await docRef.get();
+            const emails = snapshot.exists ? snapshot.data().emails || [] : [];
+            if (emails.includes(user.email) || user.email === 'admin@admin.admin') {
                 this.currentUser = user;
                 this.showNotification('Admin-Anmeldung erfolgreich!', 'success');
                 this.showDashboard();
@@ -222,11 +295,35 @@ class AdminDashboard {
             await this.auth.signOut();
             console.log('Admin abgemeldet');
             this.currentUser = null;
+            document.body.classList.remove('evil-mode'); // Evil Mode deaktivieren
+            document.body.classList.remove('school-mode'); // School Mode deaktivieren
+            
+            // User-Info zurücksetzen
+            const userInfoElement = document.getElementById('adminUserInfo');
+            if (userInfoElement) {
+                userInfoElement.innerHTML = 'Nicht eingeloggt';
+            }
+            
             this.showNotification('Erfolgreich abgemeldet', 'info');
             this.showLogin();
         } catch (error) {
             console.error('Logout-Fehler:', error);
             this.showNotification('Fehler beim Abmelden', 'error');
+        }
+    }
+
+    updateUserInfo() {
+        const userInfoElement = document.getElementById('adminUserInfo');
+        if (this.currentUser && userInfoElement) {
+            const email = this.currentUser.email || 'Unbekannt';
+            const isMainAdmin = this.currentUser.uid === 'P9jxWaBbC9ckFwJiVEx61G4THwV2';
+            const adminType = isMainAdmin ? 'Hauptadmin' : 'Admin';
+            
+            userInfoElement.innerHTML = `
+                <i class="fas fa-user-shield"></i>
+                <span class="user-email">${email}</span>
+                <span class="user-role">(${adminType})</span>
+            `;
         }
     }
 
@@ -242,6 +339,9 @@ class AdminDashboard {
             this.exams = this.combineAndDeduplicateExams([...globalExams, ...userExams]);
             
             console.log(`${this.exams.length} Klassenarbeiten geladen`);
+            
+            // Debug: Zeige alle geladenen Exams
+            console.log('Geladene Exams:', this.exams.map(e => ({id: e.id, ownerId: e.ownerId, subject: e.subject})));
             
             // Aktualisiere Statistiken
             this.updateStatistics();
@@ -355,20 +455,30 @@ class AdminDashboard {
         const examList = document.getElementById('adminExamList');
         const examCount = document.getElementById('examCount');
         
-        examCount.textContent = `${this.exams.length} Einträge`;
+        // Filter für normale Admins: nur eigene Klassenarbeiten
+        const isMainAdmin = this.currentUser?.uid === 'P9jxWaBbC9ckFwJiVEx61G4THwV2';
+        let displayableExams = this.exams;
         
-        if (this.exams.length === 0) {
+        // Normale Admins sehen alle Klassenarbeiten, können aber nur ihre eigenen bearbeiten
+        console.log(`${isMainAdmin ? 'Hauptadmin' : 'Normale Admin'} (${this.currentUser?.uid}): ${displayableExams.length} Exams angezeigt`);
+        
+        examCount.textContent = `${displayableExams.length} Einträge`;
+        
+        if (displayableExams.length === 0) {
+            const message = isMainAdmin ? 
+                'Erstellen Sie die erste Klassenarbeit.' : 
+                'Sie haben noch keine Klassenarbeiten erstellt.';
             examList.innerHTML = `
                 <div style="text-align: center; padding: 50px; color: #666;">
                     <i class="fas fa-calendar-alt" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.5;"></i>
                     <h3>Keine Klassenarbeiten gefunden</h3>
-                    <p>Erstellen Sie die erste Klassenarbeit.</p>
+                    <p>${message}</p>
                 </div>
             `;
             return;
         }
 
-        examList.innerHTML = this.exams.map(exam => this.createExamItemHTML(exam)).join('');
+        examList.innerHTML = displayableExams.map(exam => this.createExamItemHTML(exam)).join('');
         
         // Event-Handler für Aktionen
         examList.querySelectorAll('.btn-edit').forEach(btn => {
@@ -399,8 +509,32 @@ class AdminDashboard {
 
         const timeDisplay = exam.time ? `${exam.time}` : '';
         const teacherDisplay = exam.teacher ? `👨‍🏫 ${exam.teacher}` : '';
-        const sourceDisplay = exam.source === 'exams' ? '🌐 Global' : '👤 User';
         const ownerDisplay = exam.ownerId ? `🆔 ${exam.ownerId.substring(0, 8)}...` : '';
+
+        // Berechtigungen prüfen - alle Admins können alles bearbeiten und löschen
+        const isMainAdmin = this.currentUser?.uid === 'P9jxWaBbC9ckFwJiVEx61G4THwV2';
+        const isOwner = exam.ownerId === this.currentUser?.uid;
+        const canEdit = true; // Alle Admins können bearbeiten
+        const canDelete = true; // Alle Admins können löschen
+
+        // Buttons nur anzeigen wenn berechtigt
+        let actionsHTML = '';
+        if (canEdit || canDelete) {
+            actionsHTML = '<div class="exam-actions">';
+            if (canEdit) {
+                actionsHTML += `<button class="btn btn-sm btn-edit" data-exam-id="${exam.id}">
+                    <i class="fas fa-edit"></i> Bearbeiten
+                </button>`;
+            }
+            if (canDelete) {
+                actionsHTML += `<button class="btn btn-sm btn-delete" data-exam-id="${exam.id}">
+                    <i class="fas fa-trash"></i> Löschen
+                </button>`;
+            }
+            actionsHTML += '</div>';
+        } else {
+            actionsHTML = '<div class="exam-actions"><span style="color: #999; font-style: italic; font-size: 0.9rem;"><i class="fas fa-lock"></i> Nur Besitzer kann bearbeiten</span></div>';
+        }
 
         return `
             <div class="admin-exam-item">
@@ -410,18 +544,10 @@ class AdminDashboard {
                 </div>
                 <div class="exam-topic">${exam.topic}</div>
                 <div class="exam-details">
-                    <span>${sourceDisplay}</span>
                     <span>${teacherDisplay}</span>
                     <span>${ownerDisplay}</span>
                 </div>
-                <div class="exam-actions">
-                    <button class="btn btn-sm btn-edit" data-exam-id="${exam.id}">
-                        <i class="fas fa-edit"></i> Bearbeiten
-                    </button>
-                    <button class="btn btn-sm btn-delete" data-exam-id="${exam.id}">
-                        <i class="fas fa-trash"></i> Löschen
-                    </button>
-                </div>
+                ${actionsHTML}
             </div>
         `;
     }
@@ -474,8 +600,8 @@ class AdminDashboard {
         };
 
         // Validierung
-        if (!examData.subject || !examData.topic || !examData.date) {
-            this.showNotification('Bitte füllen Sie alle Pflichtfelder aus.', 'error');
+        if (!examData.subject || !examData.date) {
+            this.showNotification('Bitte füllen Sie Fach und Datum aus.', 'error');
             return;
         }
 
@@ -487,7 +613,7 @@ class AdminDashboard {
             } else {
                 // Neu hinzufügen - immer in globale Collection
                 examData.createdAt = new Date().toISOString();
-                examData.ownerId = 'admin';
+                examData.ownerId = this.currentUser.uid;
                 examData.isAdmin = true;
                 
                 await this.db.collection('exams').add(examData);
@@ -555,7 +681,7 @@ class AdminDashboard {
     }
 
     filterExams(searchTerm) {
-        const filteredExams = this.exams.filter(exam => 
+        let filteredExams = this.exams.filter(exam => 
             exam.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
             exam.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (exam.teacher && exam.teacher.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -592,9 +718,15 @@ class AdminDashboard {
         const examList = document.getElementById('adminExamList');
         const examCount = document.getElementById('examCount');
         
-        examCount.textContent = `${exams.length} Einträge`;
+        // Filter für normale Admins: nur eigene Klassenarbeiten
+        const isMainAdmin = this.currentUser?.uid === 'P9jxWaBbC9ckFwJiVEx61G4THwV2';
+        let displayableExams = exams;
         
-        if (exams.length === 0) {
+        // Normale Admins sehen alle Klassenarbeiten, können aber nur ihre eigenen bearbeiten
+        
+        examCount.textContent = `${displayableExams.length} Einträge`;
+        
+        if (displayableExams.length === 0) {
             examList.innerHTML = `
                 <div style="text-align: center; padding: 50px; color: #666;">
                     <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.5;"></i>
@@ -605,7 +737,7 @@ class AdminDashboard {
             return;
         }
 
-        examList.innerHTML = exams.map(exam => this.createExamItemHTML(exam)).join('');
+        examList.innerHTML = displayableExams.map(exam => this.createExamItemHTML(exam)).join('');
         
         // Event-Handler neu binden
         examList.querySelectorAll('.btn-edit').forEach(btn => {
@@ -623,6 +755,138 @@ class AdminDashboard {
                 this.deleteExam(examId);
             });
         });
+    }
+
+    async loadAdminUsers() {
+        const adminList = document.getElementById('adminList');
+        if (!adminList) return;
+
+        adminList.innerHTML = '<li><i class="fas fa-spinner fa-spin"></i> Lade Admin-Benutzer...</li>';
+
+        try {
+            const snapshot = await this.db.collection('admin').doc('admins').get();
+            const emails = snapshot.exists ? snapshot.data().emails || [] : [];
+
+            if (emails.length === 0) {
+                adminList.innerHTML = '<li><i class="fas fa-info-circle"></i> Keine Admin-Benutzer gefunden</li>';
+                return;
+            }
+
+            // Sortiere E-Mails alphabetisch, aber stelle sicher dass admin@admin.admin zuerst kommt
+            emails.sort((a, b) => {
+                if (a === 'admin@admin.admin') return -1;
+                if (b === 'admin@admin.admin') return 1;
+                return a.localeCompare(b);
+            });
+
+            adminList.innerHTML = emails.map(email => {
+                const isMainAdmin = email === 'admin@admin.admin';
+                const canRemove = this.currentUser?.uid === 'P9jxWaBbC9ckFwJiVEx61G4THwV2' && !isMainAdmin;
+
+                return `<li>
+                    <div class="admin-info">
+                        <i class="fas fa-user-shield"></i>
+                        <span class="admin-email">${email}</span>
+                        ${isMainAdmin ? '<span class="admin-badge-small">Hauptadmin</span>' : ''}
+                    </div>
+                    ${canRemove ? `<button class="admin-remove-btn" data-email="${email}" title="Admin entfernen">
+                        <i class="fas fa-trash"></i> Entfernen
+                    </button>` : ''}
+                </li>`;
+            }).join('');
+
+            // Event-Handler für Entfernen-Buttons
+            adminList.querySelectorAll('.admin-remove-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    const email = btn.dataset.email;
+                    if (confirm(`Möchten Sie den Admin "${email}" wirklich entfernen?`)) {
+                        await this.removeAdminUser(email);
+                    }
+                });
+            });
+
+        } catch (error) {
+            console.error('Fehler beim Laden der Admin-Benutzer:', error);
+            adminList.innerHTML = '<li><i class="fas fa-exclamation-triangle"></i> Fehler beim Laden der Admin-Benutzer</li>';
+        }
+    }
+
+    async createAdminUser(email, password) {
+        try {
+            console.log('Erstelle Admin-Benutzer:', email);
+            
+            // Firebase Auth: Benutzer anlegen
+            await this.auth.createUserWithEmailAndPassword(email, password);
+            console.log('Firebase Auth-Benutzer erstellt');
+            
+            // In Admin-Collection eintragen
+            const docRef = this.db.collection('admin').doc('admins');
+            const snapshot = await docRef.get();
+            let emails = snapshot.exists ? snapshot.data().emails || [] : [];
+            console.log('Aktuelle Admin-Liste:', emails);
+            
+            // Stelle sicher, dass der Hauptadmin immer in der Liste ist
+            if (!emails.includes('admin@admin.admin')) {
+                emails.push('admin@admin.admin');
+            }
+            
+            // Neue E-Mail hinzufügen, falls nicht vorhanden
+            if (!emails.includes(email)) {
+                emails.push(email);
+                console.log('Neue E-Mail zur Liste hinzugefügt:', email);
+            } else {
+                console.log('E-Mail bereits in Liste:', email);
+            }
+            
+            // Dokument aktualisieren
+            await docRef.set({ emails });
+            console.log('Admin-Liste aktualisiert:', emails);
+            
+            this.showNotification('Admin-Benutzer erstellt!', 'success');
+            await this.loadAdminUsers();
+            
+        } catch (err) {
+            console.error('Fehler beim Erstellen des Admin-Benutzers:', err);
+            let fehler = 'Fehler beim Erstellen!';
+            if (err.code === 'auth/email-already-in-use') {
+                fehler = 'Diese E-Mail-Adresse wird bereits verwendet.';
+            } else if (err.code === 'auth/weak-password') {
+                fehler = 'Das Passwort ist zu schwach (mindestens 6 Zeichen).';
+            } else if (err.code === 'auth/invalid-email') {
+                fehler = 'Ungültige E-Mail-Adresse.';
+            } else if (err.code === 'auth/operation-not-allowed') {
+                fehler = 'Registrierung ist nicht erlaubt. Bitte prüfen Sie die Firebase-Einstellungen.';
+            } else if (err.code === 'permission-denied') {
+                fehler = 'Keine Berechtigung, Admin-Benutzer zu erstellen.';
+            } else if (err.message) {
+                fehler = err.message;
+            }
+            this.showNotification(fehler, 'error');
+            
+            // Versuche, den erstellten Auth-Benutzer zu löschen, falls Firestore fehlgeschlagen ist
+            try {
+                // Hier könnten wir den Benutzer löschen, aber das ist kompliziert
+                // Da wir die UID nicht haben, lassen wir es
+            } catch (deleteErr) {
+                console.error('Fehler beim Aufräumen:', deleteErr);
+            }
+        }
+    }
+
+    async removeAdminUser(email) {
+        try {
+            // Aus Admin-Collection entfernen
+            const docRef = this.db.collection('admin').doc('admins');
+            const snapshot = await docRef.get();
+            let emails = snapshot.exists ? snapshot.data().emails || [] : [];
+            emails = emails.filter(e => e !== email);
+            await docRef.set({ emails }, { merge: true });
+            this.showNotification('Admin entfernt!', 'success');
+            await this.loadAdminUsers();
+        } catch (err) {
+            this.showNotification('Fehler beim Entfernen!', 'error');
+        }
     }
 
     showNotification(message, type = 'info') {
@@ -643,7 +907,7 @@ class AdminDashboard {
         
         container.appendChild(notification);
         
-        // Auto-remove nach 5 Sekunden
+        // Auto-remove nach 2 Sekunden
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.style.animation = 'slideOut 0.3s ease';
@@ -653,7 +917,7 @@ class AdminDashboard {
                     }
                 }, 300);
             }
-        }, 5000);
+        }, 2000);
     }
 }
 
@@ -669,6 +933,104 @@ document.head.appendChild(style);
 
 // Admin Dashboard initialisieren
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🛡️ Starte Admin Dashboard...');
     window.adminDashboard = new AdminDashboard();
+
+    // Toggle Firestore-Panel
+    const toggleBtn = document.getElementById('toggleFirestorePanel');
+    const panel = document.getElementById('firestorePanel');
+    if (toggleBtn && panel) {
+        toggleBtn.addEventListener('click', () => {
+            panel.classList.toggle('hidden');
+            toggleBtn.classList.toggle('open');
+        });
+    }
+
+    // Firestore-Status und Logs laden
+    async function updateFirestorePanel() {
+        // Firestore Status
+        const statusDiv = document.getElementById('firestoreStatus');
+        try {
+            const db = firebase.firestore();
+            await db.collection('exams').limit(1).get();
+            statusDiv.textContent = 'Status: Firestore erreichbar';
+        } catch (err) {
+            statusDiv.textContent = 'Status: Firestore NICHT erreichbar';
+        }
+        // Logs
+        const logsDiv = document.getElementById('firestoreLogs');
+        try {
+            const db = firebase.firestore();
+            const snapshot = await db.collection('logs').orderBy('timestamp', 'desc').limit(20).get();
+            logsDiv.innerHTML = Array.from(snapshot.docs).map(doc => {
+                const log = doc.data();
+                return `<div><span style='color:#888;'>${new Date(log.timestamp).toLocaleString()}</span> <span style='color:#764ba2;'>${log.action}</span> <span style='color:#667eea;'>(${log.by})</span></div>`;
+            }).join('');
+        } catch (err) {
+            logsDiv.textContent = 'Fehler beim Laden der Logs';
+        }
+    }
+    // Firestore-Test-Buttons
+    function bindFirestoreTestButtons() {
+        const statusDiv = document.getElementById('firestoreStatus');
+        if (document.getElementById('firestoreReadTest')) {
+            document.getElementById('firestoreReadTest').onclick = async () => {
+                try {
+                    const db = firebase.firestore();
+                    await db.collection('exams').limit(1).get();
+                    statusDiv.textContent = 'Lesen-Test erfolgreich!';
+                } catch (err) {
+                    statusDiv.textContent = 'Lesen-Test fehlgeschlagen!';
+                }
+            };
+        }
+        if (document.getElementById('firestoreWriteTest')) {
+            document.getElementById('firestoreWriteTest').onclick = async () => {
+                try {
+                    const db = firebase.firestore();
+                    await db.collection('logs').add({
+                        action: 'Test-Schreiben',
+                        by: 'Admin-Test',
+                        timestamp: new Date().toISOString()
+                    });
+                    statusDiv.textContent = 'Schreiben-Test erfolgreich!';
+                } catch (err) {
+                    statusDiv.textContent = 'Schreiben-Test fehlgeschlagen!';
+                }
+            };
+        }
+        if (document.getElementById('firestoreDeleteTest')) {
+            document.getElementById('firestoreDeleteTest').onclick = async () => {
+                try {
+                    const db = firebase.firestore();
+                    // Lösche das zuletzt erstellte Log (Test)
+                    const snapshot = await db.collection('logs').orderBy('timestamp', 'desc').limit(1).get();
+                    if (!snapshot.empty) {
+                        await db.collection('logs').doc(snapshot.docs[0].id).delete();
+                        statusDiv.textContent = 'Löschen-Test erfolgreich!';
+                    } else {
+                        statusDiv.textContent = 'Kein Log zum Löschen gefunden!';
+                    }
+                } catch (err) {
+                    statusDiv.textContent = 'Löschen-Test fehlgeschlagen!';
+                }
+            };
+        }
+        if (document.getElementById('firestoreRuleTest')) {
+            document.getElementById('firestoreRuleTest').onclick = async () => {
+                try {
+                    const db = firebase.firestore();
+                    // Versuche auf Admin-Collection zuzugreifen
+                    await db.collection('admin').doc('admins').get();
+                    statusDiv.textContent = 'Regel-Test erfolgreich!';
+                } catch (err) {
+                    statusDiv.textContent = 'Regel-Test fehlgeschlagen!';
+                }
+            };
+        }
+    }
+    // Panel initial updaten und Buttons binden
+    if (document.getElementById('firestorePanel')) {
+        updateFirestorePanel();
+        bindFirestoreTestButtons();
+    }
 });
